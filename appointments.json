@@ -1,0 +1,459 @@
+[
+  {
+    "id": "1759956334960",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "Abhiraj Kumar",
+      "age": 22,
+      "gender": "Male",
+      "contact": "8178780088",
+      "issues": "Cold and cough",
+      "diagnosis": "Upper respiratory infection"
+    },
+    "appointmentDate": "2025-10-09",
+    "appointmentTime": "09:00",
+    "createdAt": "2025-10-08T20:45:34.960Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "8178780088",
+    "notes": null
+  },
+  {
+    "id": "1759958031420",
+    "doctorName": "Dr. Emily Davis",
+    "patient": {
+      "name": "Abhiraj Kumar",
+      "age": 20,
+      "gender": "Male",
+      "contact": "+918178780088",
+      "issues": "Cold",
+      "diagnosis": "Viral upper respiratory infection"
+    },
+    "appointmentDate": "2025-10-09",
+    "appointmentTime": "10:15",
+    "createdAt": "2025-10-08T21:13:51.420Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "8178780088",
+    "notes": null
+  },
+  {
+    "id": "1759959545072",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Abhiraj Kumar",
+      "age": 20,
+      "gender": "Male",
+      "contact": "+918178780088",
+      "issues": "Cold and cough with sore throat, runny nose",
+      "diagnosis": "Upper respiratory tract infection (URTI), likely viral"
+    },
+    "appointmentDate": "2025-10-09",
+    "appointmentTime": "08:30",
+    "createdAt": "2025-10-08T21:39:05.072Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "8178780088",
+    "notes": null
+  },
+  {
+    "id": "1759996088323",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Abhiraj Kumar",
+      "age": 20,
+      "gender": "Male",
+      "contact": "+918178780088",
+      "issues": "Cold and cough for 2 days, dry cough",
+      "diagnosis": "Acute viral upper respiratory infection (common cold)"
+    },
+    "appointmentDate": "2025-10-09",
+    "appointmentTime": "13:30",
+    "createdAt": "2025-10-09T07:48:08.323Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "8178780088",
+    "notes": null
+  },
+  {
+    "id": "1759996473059",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath Bn",
+      "age": 45,
+      "gender": "Male",
+      "contact": "+919901066054",
+      "issues": "Cold and cough, productive cough with yellow mucus",
+      "diagnosis": "Acute bronchitis"
+    },
+    "appointmentDate": "2025-10-09",
+    "appointmentTime": "14:00",
+    "createdAt": "2025-10-09T07:54:33.059Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "9901066054",
+    "notes": null
+  },
+  {
+    "id": "1774350075800",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-03-24",
+    "appointmentTime": "16:45",
+    "createdAt": "2026-03-24T11:01:15.800Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "9901066054",
+    "notes": {
+      "chiefComplaint": "null",
+      "examination": "",
+      "diagnosis": "Assessment pending",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-04-04T06:11:29.380Z"
+    },
+    "updatedAt": "2026-04-04T06:11:29.380Z"
+  },
+  {
+    "id": "1775235198438",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "09:00",
+    "createdAt": "2026-04-03T16:53:18.439Z",
+    "doctorId": null,
+    "status": "confirmed",
+    "patientId": "9901066054",
+    "notes": null
+  },
+  {
+    "id": "DUMMY001",
+    "doctorId": "CD003",
+    "doctorName": "Dr. James Wilson",
+    "patient": {
+      "name": "Ravi Mehta",
+      "age": 54,
+      "gender": "Male",
+      "contact": "+919876543210",
+      "issues": "Chest pain and shortness of breath for 3 days",
+      "diagnosis": "Possible angina pectoris"
+    },
+    "appointmentDate": "2026-04-05",
+    "appointmentTime": "09:00",
+    "status": "confirmed",
+    "createdAt": "2026-04-03T16:56:31.704Z",
+    "updatedAt": "2026-04-03T17:20:27.428Z",
+    "patientId": "9876543210",
+    "notes": null
+  },
+  {
+    "id": "1775236014426",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "990887788",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "09:15",
+    "status": "confirmed",
+    "createdAt": "2026-04-03T17:06:54.426Z",
+    "updatedAt": "2026-04-03T17:09:26.747Z",
+    "patientId": "990887788",
+    "notes": null
+  },
+  {
+    "id": "1775236793550",
+    "doctorId": "CD001",
+    "doctorName": "Dr. Robert Martinez",
+    "patient": {
+      "name": "Bharath",
+      "age": 43,
+      "gender": "Male",
+      "contact": "+30245923745",
+      "issues": "Heart problem, cardiology issues, had a heart attack.",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "09:00",
+    "status": "pending",
+    "createdAt": "2026-04-03T17:19:53.550Z",
+    "patientId": "0245923745",
+    "notes": null
+  },
+  {
+    "id": "DEMO_PAST001",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patientId": "9901066054",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066054",
+      "issues": "Itchy rash on forearm for 5 days, slight redness",
+      "diagnosis": "Contact dermatitis"
+    },
+    "appointmentDate": "2026-03-10",
+    "appointmentTime": "10:00",
+    "status": "confirmed",
+    "notes": {
+      "chiefComplaint": "Itchy rash on forearm for 5 days",
+      "examination": "Erythematous papular rash on left forearm, no vesicles",
+      "diagnosis": "Contact dermatitis — likely allergic reaction to detergent",
+      "prescription": "Hydrocortisone 1% cream twice daily for 7 days. Avoid scented soaps.",
+      "followUp": "Return if no improvement in 1 week",
+      "addedAt": "2026-03-10T10:45:00.000Z"
+    },
+    "createdAt": "2026-03-09T08:00:00.000Z"
+  },
+  {
+    "id": "DEMO_PAST002",
+    "doctorId": "CD003",
+    "doctorName": "Dr. James Wilson",
+    "patientId": "9876543210",
+    "patient": {
+      "name": "Ravi Mehta",
+      "age": 54,
+      "gender": "Male",
+      "contact": "+919876543210",
+      "issues": "Chest pain on exertion, relieved by rest",
+      "diagnosis": "Stable angina pectoris"
+    },
+    "appointmentDate": "2026-03-20",
+    "appointmentTime": "09:00",
+    "status": "confirmed",
+    "notes": {
+      "chiefComplaint": "Chest pain on exertion for 2 weeks",
+      "examination": "BP 145/90, HR 78 bpm, mild tachycardia on exertion",
+      "diagnosis": "Stable angina pectoris — likely coronary artery disease",
+      "prescription": "Aspirin 75mg OD, Atenolol 25mg OD. Avoid heavy exertion.",
+      "followUp": "ECG and stress test in 2 weeks",
+      "addedAt": "2026-03-20T09:40:00.000Z"
+    },
+    "createdAt": "2026-03-19T08:00:00.000Z"
+  },
+  {
+    "id": "1775290975481",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "Bharath",
+      "age": 45,
+      "gender": "Male",
+      "contact": "9230175184",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "14:00",
+    "status": "pending",
+    "createdAt": "2026-04-04T08:22:55.481Z"
+  },
+  {
+    "id": "1775291291593",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066053",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "16:30",
+    "status": "pending",
+    "createdAt": "2026-04-04T08:28:11.593Z"
+  },
+  {
+    "id": "1775292588181",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Ramkumar",
+      "age": 25,
+      "gender": "Male",
+      "contact": "82034235735",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-04",
+    "appointmentTime": "16:45",
+    "status": "confirmed",
+    "createdAt": "2026-04-04T08:49:48.181Z",
+    "updatedAt": "2026-04-04T08:50:29.877Z"
+  },
+  {
+    "id": "1775364726640",
+    "doctorId": "DR003",
+    "doctorName": "Dr. Claire Bennett",
+    "patient": {
+      "name": "Bharath",
+      "age": 43,
+      "gender": "Male",
+      "contact": "2945725972-5",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-05",
+    "appointmentTime": "10:30",
+    "status": "pending",
+    "createdAt": "2026-04-05T04:52:06.640Z"
+  },
+  {
+    "id": "1775928392904",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Binda",
+      "age": 45,
+      "gender": "Male",
+      "contact": "395823934532",
+      "issues": "null",
+      "diagnosis": "Unknown. Confidence: Low. Reason: Symptoms provided are inconclusive."
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "09:00",
+    "status": "pending",
+    "createdAt": "2026-04-11T17:26:32.904Z"
+  },
+  {
+    "id": "1775928784879",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Srini",
+      "age": 33,
+      "gender": "Male",
+      "contact": "423754352",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "08:00",
+    "status": "pending",
+    "createdAt": "2026-04-11T17:33:04.879Z"
+  },
+  {
+    "id": "1775970920137",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Manu",
+      "age": 27,
+      "gender": "Female",
+      "contact": "3298175571",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "11:00",
+    "status": "pending",
+    "createdAt": "2026-04-12T05:15:20.137Z"
+  },
+  {
+    "id": "1775971501625",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Getu",
+      "age": 32,
+      "gender": "Female",
+      "contact": "425243543",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "11:15",
+    "status": "pending",
+    "createdAt": "2026-04-12T05:25:01.625Z"
+  },
+  {
+    "id": "1775971834823",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Sangeeta",
+      "age": 24,
+      "gender": "Female",
+      "contact": "432075275",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "11:30",
+    "status": "pending",
+    "createdAt": "2026-04-12T05:30:34.823Z"
+  },
+  {
+    "id": "1775972376230",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Damodar",
+      "age": 34,
+      "gender": "Male",
+      "contact": "3947525725",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-04-12",
+    "appointmentTime": "11:45",
+    "status": "pending",
+    "createdAt": "2026-04-12T05:39:36.230Z"
+  },
+  {
+    "id": "1778753712432",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "Bharath",
+      "age": 22,
+      "gender": "Male",
+      "contact": "992398432",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-14",
+    "appointmentTime": "16:00",
+    "status": "pending",
+    "createdAt": "2026-05-14T10:15:12.432Z"
+  },
+  {
+    "id": "1778756706475",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 22,
+      "gender": "Male",
+      "contact": "32459072234",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-15",
+    "appointmentTime": "08:00",
+    "status": "pending",
+    "createdAt": "2026-05-14T11:05:06.475Z"
+  }
+]

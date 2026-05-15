@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carely</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Carely</h1>
+            <p>Medical Appointment Booking System</p>
+        </div>
+
+        <!-- Setup Panel -->
+        <div class="setup-panel" id="setupPanel">
+            <h3>Welcome to Carely</h3>
+            
+            
+
+            <button class="start-btn" id="startBtn">Start Appointment Booking</button>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer" style="display: none;">
+            <div class="chat-messages" id="chatMessages"></div>
+            
+            <div class="progress-panel" id="progressPanel">
+                <div class="progress-item incomplete" id="nameProgress">❌ Name</div>
+                <div class="progress-item incomplete" id="ageProgress">❌ Age</div>
+                <div class="progress-item incomplete" id="genderProgress">❌ Gender</div>
+                <div class="progress-item incomplete" id="contactProgress">❌ Contact</div>
+                <div class="progress-item incomplete" id="symptomsProgress">❌ Symptoms</div>
+                <div class="progress-item incomplete" id="diagnosisProgress">❌ Diagnosis</div>
+                <div class="progress-item incomplete" id="assessmentProgress">🔄 Assessment</div>
+            </div>
+
+            <div class="chat-input-container">
+                <!-- Upload Panel (hidden until + clicked) -->
+                <div class="upload-panel" id="uploadPanel" style="display:none;">
+                    <div class="upload-panel-row">
+                        <select id="reportTypeSelect" class="report-type-select">
+                            <option value="" disabled selected>Select document type</option>
+                            <option value="Report">📄 Lab / Medical Report</option>
+                            <option value="X-Ray">🦴 X-Ray</option>
+                            <option value="MRI">🧠 MRI Scan</option>
+                            <option value="Ultrasound">🔊 Ultrasound Scan</option>
+                            <option value="Prescription">💊 Prescription</option>
+                            <option value="Other">📎 Other</option>
+                        </select>
+                        <label class="file-choose-btn" id="fileChooseLabel">
+                            Choose File
+                            <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx" style="display:none;">
+                        </label>
+                        <span class="file-name-display" id="fileNameDisplay">No file chosen</span>
+                        <button class="upload-confirm-btn" id="uploadConfirmBtn" disabled>Attach</button>
+                        <button class="upload-cancel-btn" id="uploadCancelBtn">✕</button>
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <button class="attach-btn" id="attachBtn" title="Attach medical document">+</button>
+                    <input type="text" id="userInput" placeholder="Type your message...">
+                    <button class="send-btn" id="sendBtn">Send</button>
+                    <button class="voice-toggle-btn" id="voiceToggleBtn" title="Toggle voice on/off">🔊</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Panel -->
+        <div class="loading" id="loadingPanel" style="display: none;">
+            <p>🤖 AI is thinking...</p>
+        </div>
+
+        <!-- Doctor Selection Panel -->
+        <div id="doctorSelectionPanel" style="display:none;">
+            <div class="doctor-selection-header">
+                <h3>👨‍⚕️ Choose Your Doctor</h3>
+                <p id="doctorSelectionSub">Select a doctor to confirm your appointment</p>
+            </div>
+            <div id="doctorCards" class="doctor-cards-grid"></div>
+        </div>
+
+        <!-- Result Panel -->
+        <div class="result-panel" id="resultPanel" style="display: none;">
+            <h3>✅ Appointment Created Successfully!</h3>
+            <div class="appointment-details" id="appointmentDetails"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

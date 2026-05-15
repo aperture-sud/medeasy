@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Login — Carely</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo .icon { font-size: 2.5rem; }
+        .logo h1 { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; margin-top: 0.4rem; }
+        .logo p  { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
+
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.4rem; }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+            color: #111827;
+        }
+        input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+
+        .password-wrap { position: relative; }
+        .toggle-pw {
+            position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1rem;
+            padding: 0.25rem;
+        }
+        .toggle-pw:hover { color: #667eea; }
+
+        .btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+        .btn:hover  { opacity: 0.92; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert.show { display: block; }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+            text-decoration: none;
+        }
+        .back-link:hover { color: #667eea; }
+
+        /* Change-password modal */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal h2 { font-size: 1.25rem; font-weight: 700; color: #1a1a2e; margin-bottom: 0.5rem; }
+        .modal p  { font-size: 0.875rem; color: #6b7280; margin-bottom: 1.25rem; }
+
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle; margin-right: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo">
+        <div class="icon">🏥</div>
+        <h1>Carely</h1>
+        <p>Doctor Portal — Sign In</p>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="loginForm" novalidate>
+        <div class="form-group">
+            <label for="email">Email address</label>
+            <input type="email" id="email" placeholder="doctor@hospital.com" autocomplete="email" required />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+                <button type="button" class="toggle-pw" id="togglePw" aria-label="Toggle password visibility">👁️</button>
+            </div>
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn">Sign In</button>
+    </form>
+
+    <a href="/" class="back-link">← Back to patient portal</a>
+</div>
+
+<!-- Change-password modal (shown when mustChangePassword = true) -->
+<div class="modal-overlay" id="changePwModal">
+    <div class="modal">
+        <h2>🔑 Change Your Password</h2>
+        <p>This is your first login. Please set a new password before continuing.</p>
+
+        <div id="changePwAlert" class="alert"></div>
+
+        <div class="form-group">
+            <label for="newPassword">New Password</label>
+            <div class="password-wrap">
+                <input type="password" id="newPassword" placeholder="Minimum 8 characters" />
+                <button type="button" class="toggle-pw" onclick="toggleField('newPassword')">👁️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <div class="password-wrap">
+                <input type="password" id="confirmPassword" placeholder="Repeat new password" />
+                <button type="button" class="toggle-pw" onclick="toggleField('confirmPassword')">👁️</button>
+            </div>
+        </div>
+
+        <button class="btn" id="changePwBtn" onclick="submitPasswordChange()">Update Password</button>
+    </div>
+</div>
+
+<script>
+    let _tempToken = null; // holds token during change-password flow
+
+    // Toggle password visibility
+    document.getElementById('togglePw').addEventListener('click', () => toggleField('password'));
+    function toggleField(id) {
+        const el = document.getElementById(id);
+        el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    // Show / hide alert
+    function showAlert(id, message, type = 'error') {
+        const el = document.getElementById(id);
+        el.textContent = message;
+        el.className = `alert alert-${type} show`;
+    }
+    function hideAlert(id) {
+        document.getElementById(id).className = 'alert';
+    }
+
+    // Login form submit
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlert('alert');
+
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const btn      = document.getElementById('loginBtn');
+
+        if (!email || !password) {
+            showAlert('alert', 'Please enter your email and password.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Signing in…';
+
+        try {
+            const res  = await fetch('/api/doctor/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                showAlert('alert', data.error || 'Login failed. Please try again.');
+                return;
+            }
+
+            // Save token
+            localStorage.setItem('doctorToken', data.token);
+            localStorage.setItem('doctorName',  data.doctor.name);
+            localStorage.setItem('doctorId',    data.doctor.id);
+
+            if (data.doctor.mustChangePassword) {
+                // Must set new password first
+                _tempToken = data.token;
+                document.getElementById('changePwModal').classList.add('show');
+            } else {
+                showAlert('alert', `Welcome back, ${data.doctor.name}!`, 'success');
+                setTimeout(() => { window.location.href = '/doctor-dashboard.html'; }, 800);
+            }
+
+        } catch (err) {
+            showAlert('alert', 'Network error. Please check your connection.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    });
+
+    // Change-password submit
+    async function submitPasswordChange() {
+        hideAlert('changePwAlert');
+
+        const newPw  = document.getElementById('newPassword').value;
+        const confPw = document.getElementById('confirmPassword').value;
+
+        if (newPw.length < 8) {
+            showAlert('changePwAlert', 'Password must be at least 8 characters.');
+            return;
+        }
+        if (newPw !== confPw) {
+            showAlert('changePwAlert', 'Passwords do not match.');
+            return;
+        }
+
+        const btn = document.getElementById('changePwBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Updating…';
+
+        try {
+            const res  = await fetch('/api/doctor/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${_tempToken}`
+                },
+                body: JSON.stringify({ newPassword: newPw })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                showAlert('changePwAlert', data.error || 'Failed to update password.');
+                return;
+            }
+
+            document.getElementById('changePwModal').classList.remove('show');
+            showAlert('alert', `Password updated! Welcome, ${localStorage.getItem('doctorName')}.`, 'success');
+            setTimeout(() => { window.location.href = '/doctor-dashboard.html'; }, 900);
+
+        } catch (err) {
+            showAlert('changePwAlert', 'Network error. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Update Password';
+        }
+    }
+
+    // Redirect if already logged in
+    (function checkExistingSession() {
+        const token = localStorage.getItem('doctorToken');
+        if (!token) return;
+        fetch('/api/doctor/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(r => {
+            if (r.ok) window.location.href = '/doctor-dashboard.html';
+        }).catch(() => {});
+    })();
+</script>
+
+</body>
+</html>

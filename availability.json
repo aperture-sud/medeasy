@@ -1,0 +1,23 @@
+{
+  "DR001": {
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "startTime": "09:00",
+    "endTime": "17:00",
+    "slotDuration": 15,
+    "doctorName": "Dr. Priya Sharma",
+    "updatedAt": "2026-04-05T04:45:38.242Z",
+    "dateOverrides": {
+      "2026-04-05": {
+        "available": false,
+        "startTime": "09:00",
+        "endTime": "17:00"
+      }
+    }
+  }
+}
