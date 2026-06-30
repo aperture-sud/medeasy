@@ -96,6 +96,18 @@
         .appt-info .appt-meta { font-size: 0.8rem; color: #6b7280; margin-top: 0.2rem; }
         .appt-info .appt-diagnosis { font-size: 0.8rem; color: #4b5563; margin-top: 0.35rem; background: #f9fafb; padding: 0.3rem 0.6rem; border-radius: 6px; display: inline-block; }
         .notes-preview { font-size: 0.78rem; color: #059669; margin-top: 0.3rem; }
+        .ai-suggestions-preview { font-size: 0.78rem; color: #7c3aed; margin-top: 0.3rem; }
+        .btn-ai-suggest { background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd; border-radius: 6px; padding: 0.3rem 0.7rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+        .btn-ai-suggest:hover { background: #ede9fe; }
+        /* AI Suggestions modal */
+        .ai-suggest-section { margin-bottom: 1rem; }
+        .ai-suggest-section h4 { font-size: 0.82rem; font-weight: 700; color: #5b21b6; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .ai-suggest-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+        .ai-suggest-list li { font-size: 0.83rem; color: #374151; background: #f5f3ff; border-left: 3px solid #8b5cf6; padding: 0.35rem 0.6rem; border-radius: 0 6px 6px 0; }
+        .urgency-badge { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+        .urgency-routine   { background: #d1fae5; color: #065f46; }
+        .urgency-urgent    { background: #fef3c7; color: #92400e; }
+        .urgency-emergency { background: #fee2e2; color: #991b1b; }
 
         .appt-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; flex-shrink: 0; }
         .status-badge { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.2rem 0.6rem; border-radius: 20px; }
@@ -503,6 +515,21 @@
     </div>
 </div>
 
+<!-- AI Clinical Suggestions modal -->
+<div class="modal-overlay" id="aiSuggestModal">
+    <div class="modal" style="max-width:500px">
+        <h2>🤖 AI Clinical Suggestions</h2>
+        <div class="modal-sub" id="aiSuggestPatientName"></div>
+        <div id="aiSuggestBody">
+            <p style="color:#6b7280;font-size:0.85rem">Loading suggestions…</p>
+        </div>
+        <div class="btn-row" style="margin-top:1rem">
+            <button type="button" class="btn-secondary" onclick="closeModal('aiSuggestModal')">Close</button>
+            <button type="button" class="btn-primary" id="applyAISuggestBtn" onclick="applyAISuggestions()">Apply to Notes</button>
+        </div>
+    </div>
+</div>
+
 <!-- Day availability edit modal -->
 <div class="modal-overlay" id="dayEditModal">
     <div class="modal" style="max-width:400px">
@@ -674,11 +701,14 @@ function renderAppointments() {
         const patientId = a.patientId || (a.patient.contact ? a.patient.contact.replace(/\D/g,'').slice(-10) : '');
 
         const canAct = !isPast && a.status !== 'rejected' && a.status !== 'cancelled';
+        const hasAI  = !!(a.aiSuggestions && (a.aiSuggestions.treatment || a.aiSuggestions.labTests));
+        const aiPreview = hasAI ? `<div class="ai-suggestions-preview">🤖 AI suggestions ready · Urgency: ${a.aiSuggestions.urgency || 'routine'}</div>` : '';
         const actions = `<div class="action-btns">
             ${canAct && a.status !== 'confirmed'   ? `<button class="btn-accept" onclick="updateStatus('${a.id}','confirmed')">Accept</button>` : ''}
             ${canAct && a.status !== 'rejected'    ? `<button class="btn-reject" onclick="updateStatus('${a.id}','rejected')">Reject</button>` : ''}
             ${canAct                               ? `<button class="btn-reschedule" onclick="openReschedule('${a.id}','${a.patient.name}')">Reschedule</button>` : ''}
             <button class="btn-notes" onclick="openNotes('${a.id}','${a.patient.name}')">${hasNotes ? 'Edit Notes' : '+ Notes'}</button>
+            ${hasAI ? `<button class="btn-ai-suggest" onclick="openAISuggestions('${a.id}')">🤖 AI Suggest</button>` : ''}
             ${patientId ? `<button class="btn-view-patient" onclick="openPatientHistory('${patientId}','${a.patient.name}')">History</button>` : ''}
         </div>`;
 
@@ -689,6 +719,7 @@ function renderAppointments() {
                 <div class="appt-meta" style="margin-top:0.2rem">🩺 ${a.patient.issues||'—'}</div>
                 ${a.patient.diagnosis ? `<span class="appt-diagnosis">Dx: ${a.patient.diagnosis}</span>` : ''}
                 ${notesPreview}
+                ${aiPreview}
             </div>
             <div class="appt-actions">${badge}${actions}</div>
         </div>`;
@@ -733,6 +764,55 @@ async function confirmReschedule() {
         renderAppointments();
     } catch { showAlert('rescheduleAlert','Network error.','error'); }
     finally { btn.disabled = false; btn.textContent = 'Confirm'; }
+}
+
+// ── AI Clinical Suggestions ──
+let _aiSuggestApptId = null;
+
+function openAISuggestions(apptId) {
+    _aiSuggestApptId = apptId;
+    const appt = _allAppointments.find(a => a.id === apptId);
+    if (!appt) return;
+    const s = appt.aiSuggestions;
+    document.getElementById('aiSuggestPatientName').textContent =
+        `${appt.patient.name} · ${appt.patient.age}y · ${appt.patient.gender} · Dx: ${appt.patient.diagnosis || '—'}`;
+
+    const urgencyClass = `urgency-${(s.urgency || 'routine').toLowerCase()}`;
+    const treatmentHTML = (s.treatment || []).length
+        ? `<ul class="ai-suggest-list">${s.treatment.map(t => `<li>${t}</li>`).join('')}</ul>`
+        : '<p style="color:#9ca3af;font-size:0.83rem">No treatment suggestions available.</p>';
+    const labHTML = (s.labTests || []).length
+        ? `<ul class="ai-suggest-list">${s.labTests.map(t => `<li>${t}</li>`).join('')}</ul>`
+        : '<p style="color:#9ca3af;font-size:0.83rem">No lab tests suggested.</p>';
+
+    document.getElementById('aiSuggestBody').innerHTML = `
+        <span class="urgency-badge ${urgencyClass}">Urgency: ${s.urgency || 'routine'}</span>
+        <div class="ai-suggest-section">
+            <h4>💊 Suggested Treatment / Management</h4>
+            ${treatmentHTML}
+        </div>
+        <div class="ai-suggest-section">
+            <h4>🧪 Recommended Lab Tests</h4>
+            ${labHTML}
+        </div>
+        <p style="font-size:0.73rem;color:#9ca3af;margin-top:0.5rem">Generated by AI · Review and adjust as clinically appropriate.</p>
+    `;
+    document.getElementById('aiSuggestModal').classList.add('show');
+}
+
+function applyAISuggestions() {
+    const appt = _allAppointments.find(a => a.id === _aiSuggestApptId);
+    if (!appt || !appt.aiSuggestions) return;
+    const s = appt.aiSuggestions;
+    // Pre-fill the treatment and follow-up fields in the notes form
+    const treatmentText = (s.treatment || []).join('\n');
+    const labText = (s.labTests || []).length
+        ? `Recommended tests:\n${s.labTests.join('\n')}`
+        : '';
+    if (treatmentText) document.getElementById('nPrescription').value = treatmentText;
+    if (labText)       document.getElementById('nFollowUp').value = labText;
+    closeModal('aiSuggestModal');
+    openNotes(_aiSuggestApptId, appt.patient.name);
 }
 
 // ── Consultation Notes ──

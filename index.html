@@ -42,6 +42,7 @@
                     <div class="upload-panel-row">
                         <select id="reportTypeSelect" class="report-type-select">
                             <option value="" disabled selected>Select document type</option>
+                            <option value="SymptomPhoto">📷 Symptom Photo (AI Analysis)</option>
                             <option value="Report">📄 Lab / Medical Report</option>
                             <option value="X-Ray">🦴 X-Ray</option>
                             <option value="MRI">🧠 MRI Scan</option>
@@ -73,11 +74,32 @@
             <p>🤖 AI is thinking...</p>
         </div>
 
+        <!-- Doctor Calendar Panel -->
+        <div id="calendarPanel" style="display:none;">
+            <div class="doctor-selection-header">
+                <h3>📅 Choose a Time Slot</h3>
+                <p id="calendarDoctorName"></p>
+            </div>
+            <div id="calendarSlots" class="calendar-slots-container"></div>
+        </div>
+
+        <!-- Preferred Doctor Panel -->
+        <div id="preferredDoctorPanel" style="display:none;">
+            <div class="doctor-selection-header">
+                <h3>👨‍⚕️ Do you have a preferred doctor?</h3>
+                <p>Select a doctor from the list below, or let us recommend one based on your symptoms.</p>
+            </div>
+            <div id="preferredDoctorCards" class="doctor-cards-grid"></div>
+            <div style="text-align:center; margin-top:1.25rem;">
+                <button class="no-pref-btn" onclick="window._noPreferredDoctor()">I have no preference — recommend for me</button>
+            </div>
+        </div>
+
         <!-- Doctor Selection Panel -->
         <div id="doctorSelectionPanel" style="display:none;">
             <div class="doctor-selection-header">
-                <h3>👨‍⚕️ Choose Your Doctor</h3>
-                <p id="doctorSelectionSub">Select a doctor to confirm your appointment</p>
+                <h3>👨‍⚕️ Recommended Doctors</h3>
+                <p id="doctorSelectionSub">Based on your symptoms, here are the best matches</p>
             </div>
             <div id="doctorCards" class="doctor-cards-grid"></div>
         </div>

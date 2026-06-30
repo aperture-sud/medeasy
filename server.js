@@ -285,7 +285,9 @@ const axios = require('axios');
 // -----------------------------------------------------------------------------
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma2:2b';
-let hfServiceAvailable = false;
+const VISION_MODEL  = process.env.VISION_MODEL  || 'minicpm-v';
+let hfServiceAvailable  = false;
+let visionModelAvailable = false;
 
 async function checkHFService() {
     try {
@@ -298,8 +300,16 @@ async function checkHFService() {
             hfServiceAvailable = false;
             console.warn(`⚠️ Ollama running but ${OLLAMA_MODEL} not found. Run: ollama pull ${OLLAMA_MODEL}`);
         }
+        if (models.some(m => m.startsWith('minicpm-v') || m.startsWith('llava') || m.startsWith('llama3.2-vision'))) {
+            visionModelAvailable = true;
+            console.log(`✅ Vision model available — using: ${VISION_MODEL}`);
+        } else {
+            visionModelAvailable = false;
+            console.warn(`⚠️ Vision model not found. Run: ollama pull ${VISION_MODEL}`);
+        }
     } catch (e) {
-        hfServiceAvailable = false;
+        hfServiceAvailable  = false;
+        visionModelAvailable = false;
         console.warn(`⚠️ Ollama not reachable. Run: ollama serve`);
     }
 }
@@ -408,18 +418,30 @@ app.post('/api/medical-chat', async (req, res) => {
         console.log('🤖 AI Chat Request:', {
             message: message.substring(0, 100),
             historyLength: conversationHistory.length,
-            patientFields: Object.keys(patientData).filter(key => patientData[key])
+            name: patientData.name || '—',
+            symptoms: patientData.symptoms || '—',
+            symptomsSummary: patientData.symptomsSummary
+                ? patientData.symptomsSummary.substring(0, 200)
+                : '(empty)',
+            differential: (patientData.differential || []).map(d => `${d.condition}(p=${d.probability})`),
+            askedQuestions: (patientData.askedQuestions || []).length
         });
 
         // --- Build enriched system instruction ---
-        const extractedFields = Object.keys(patientData).filter(key =>
-            patientData[key] && patientData[key] !== "" && patientData[key] !== "N/A" && patientData[key] !== 0
-        );
-        const missingFields = ['name', 'age', 'gender', 'contact', 'symptoms', 'diagnosis']
-            .filter(f => !extractedFields.includes(f));
+        // Only count scalar fields that are genuinely filled (exclude empty arrays/objects)
+        const CORE_FIELDS = ['name', 'age', 'gender', 'contact', 'symptoms'];
+        const collectedCore = CORE_FIELDS.filter(f => {
+            const v = patientData[f];
+            return v && v !== "" && v !== "N/A" && v !== 0;
+        });
+        const missingCore = CORE_FIELDS.filter(f => !collectedCore.includes(f));
 
-        const patientContext = extractedFields.length > 0
-            ? `\nCOLLECTED SO FAR (DO NOT ASK FOR THESE AGAIN):\n${extractedFields.map(f => `- ${f}: ${patientData[f]}`).join('\n')}\nSTILL NEEDED: ${missingFields.join(', ')}\nOnly ask for fields listed under STILL NEEDED. Never ask for any field already listed under COLLECTED SO FAR.`
+        const symptomsSummary = patientData.symptomsSummary || '';
+        const collectedDisplay = collectedCore
+            .map(f => `${f}: ${patientData[f]}`)
+            .join(', ');
+        const patientContext = collectedCore.length > 0
+            ? `\nCOLLECTED (DO NOT ASK AGAIN): ${collectedDisplay}${symptomsSummary ? `\nSymptom details: ${symptomsSummary}` : ''}\nSTILL NEEDED: ${missingCore.join(', ')}\nOnly ask for fields listed under STILL NEEDED.`
             : '\nNOTHING COLLECTED YET. Begin with name, age, and gender together.';
 
         const gender = patientData.gender || null;
@@ -429,39 +451,112 @@ app.post('/api/medical-chat', async (req, res) => {
             ? '\n⚠️ PATIENT IS FEMALE. NEVER ask about prostate or male-specific conditions.'
             : '';
 
-        // --- RAG context: symptom-specific clinical question examples ---
-        const symptoms = (patientData.symptoms || '').toLowerCase();
-        let questionContext = '';
-        if (symptoms) {
-            const { specialty, context: ragContext, source } = await getSymptomContext(patientData.symptoms, gender);
-            const symptomWarning = `\n⚠️ PATIENT'S SYMPTOMS ARE: "${patientData.symptoms}". ONLY ask follow-up questions about THESE symptoms. Do NOT introduce any other condition.`;
-            if (ragContext) {
-                const label = source === 'rag'
-                    ? `RELEVANT CLINICAL DIALOGUE EXAMPLES FOR ${specialty.toUpperCase()} (semantic match — use as inspiration only):`
-                    : `SUGGESTED FOLLOW-UP QUESTIONS FOR ${specialty.toUpperCase()} (only use ones relevant to what THIS patient said):`;
-                questionContext = `${symptomWarning}\n${label}\n${ragContext}`;
-            } else {
-                questionContext = symptomWarning;
-            }
-        }
-
-        // --- Determine if we are in follow-up phase ---
-        const hasSymptoms = !!(patientData.symptoms && patientData.symptoms.trim());
+        // --- Determine follow-up phase FIRST (needed to decide whether to inject RAG) ---
+        // Treat placeholder extraction values as "no symptoms" so we always ask the patient explicitly
+        const SYMPTOM_PLACEHOLDERS = ['not provided','not specified','not mentioned','not stated','not given','not collected','not available','unknown','none','null','n/a','no symptoms','no complaints','not reported','unspecified','tbd'];
+        const rawSymptoms = (patientData.symptoms || '').trim();
+        const symptomsIsPlaceholder = SYMPTOM_PLACEHOLDERS.some(p => rawSymptoms.toLowerCase() === p);
+        const hasSymptoms = !!(rawSymptoms && !symptomsIsPlaceholder);
         const allBasicCollected = patientData.name && patientData.age && patientData.gender && patientData.contact && patientData.symptoms;
         const assistantTurns = conversationHistory.filter(m => m.role === 'assistant').length;
         // First ~4 assistant turns = intro + basic info. Follow-ups start after that.
         const followUpsDone = allBasicCollected ? Math.max(0, assistantTurns - 4) : 0;
         const needsMoreFollowUp = hasSymptoms && followUpsDone < 3;
 
-        const followUpInstruction = needsMoreFollowUp
-            ? `\n\n🔴 FOLLOW-UP PHASE — YOU MUST ASK MORE QUESTIONS:\n- You have the patient's basic info and symptoms.\n- You have asked ${followUpsDone} follow-up question(s) about the symptoms so far. You need at least 3.\n- Ask ONE specific follow-up question now about: duration, severity (1-10), onset, triggers, associated symptoms, or relevant medical history.\n- DO NOT ask about appointment time yet.\n- DO NOT say "I have sufficient information" yet.\n- DO NOT diagnose yet.`
-            : hasSymptoms
-            ? `\n\n✅ FOLLOW-UP COMPLETE — You have gathered enough symptom information. You may now:\n- Give a brief preliminary assessment or say "Diagnosis: [assessment]".\n- Ask the patient's preferred appointment time (morning/afternoon/evening).\n- Then say "I have sufficient information to book your appointment now."`
+        // --- RAG context: only inject during follow-up phase to avoid repetition ---
+        const symptoms = (patientData.symptoms || '').toLowerCase();
+        let questionContext = '';
+        if (symptoms && needsMoreFollowUp) {
+            const { specialty, context: ragContext, source } = await getSymptomContext(patientData.symptoms, gender);
+            const symptomWarning = `\n⚠️ PATIENT'S SYMPTOMS ARE: "${patientData.symptoms}". ONLY ask follow-up questions about THESE symptoms. Do NOT introduce any other condition.`;
+            if (ragContext) {
+                const label = source === 'rag'
+                    ? `RELEVANT CLINICAL DIALOGUE EXAMPLES FOR ${specialty.toUpperCase()} (pick ONE question not yet asked):`
+                    : `SUGGESTED FOLLOW-UP QUESTIONS FOR ${specialty.toUpperCase()} (pick ONE not yet asked):`;
+                // Exclude questions already asked in conversation history
+                const askedLower = conversationHistory
+                    .filter(m => m.role === 'assistant')
+                    .map(m => m.content.toLowerCase());
+                const filteredContext = ragContext.split('\n')
+                    .filter(line => !askedLower.some(asked => asked.includes(line.toLowerCase().replace(/^d:\s*/,'').substring(0, 30))))
+                    .join('\n');
+                questionContext = `${symptomWarning}\n${label}\n${filteredContext}`;
+            } else {
+                questionContext = symptomWarning;
+            }
+        } else if (symptoms) {
+            questionContext = `\n⚠️ PATIENT'S SYMPTOMS ARE: "${patientData.symptoms}".`;
+        }
+
+        // --- Differential diagnosis context ---
+        const differential = patientData.differential || [];
+        const askedQuestions = patientData.askedQuestions || [];
+
+        // Pick next unasked discriminating question from differential
+        let nextMandatoryQuestion = null;
+        if (needsMoreFollowUp && differential.length) {
+            for (const cond of differential) {
+                const dq = (cond.discriminating_question || '').trim();
+                if (!dq) continue;
+                const alreadyAsked = askedQuestions.some(q =>
+                    q.toLowerCase().includes(dq.toLowerCase().substring(0, 25))
+                ) || conversationHistory
+                    .filter(m => m.role === 'assistant')
+                    .some(m => m.content.toLowerCase().includes(dq.toLowerCase().substring(0, 25)));
+                if (!alreadyAsked) { nextMandatoryQuestion = dq; break; }
+            }
+        }
+
+        const differentialContext = differential.length
+            ? `\n\nDIFFERENTIAL (ranked):\n${differential.map((d, i) =>
+                `${i+1}. ${d.condition} — probability ${d.probability} — evidence_for: [${(d.evidence_for||[]).join(', ')}]`
+              ).join('\n')}`
             : '';
 
-        const responseGuidelines = `\n\nRESPONSE GUIDELINES:\n- Ask name, age, and gender TOGETHER in one question if any are missing.\n- NEVER ask for information you already have.\n- ONLY ask about symptoms the patient has mentioned.\n- If the patient says "I don't know" or denies a symptom, accept it and move on.\n- After 3+ follow-up symptom questions, then ask preferred appointment time, then conclude.\n- If you cannot determine a diagnosis, say: "Diagnosis is unknown".\n- Say "I have sufficient information to book your appointment now." ONLY after asking follow-up questions AND appointment time preference.`;
+        // --- Bypass LLM entirely when we can determine the next step deterministically ---
 
-        const systemInstruction = `${systemPrompt}${patientContext}${genderWarning}${questionContext}${followUpInstruction}${responseGuidelines}`;
+        // 0. Basic info still incomplete — return exactly the right next question
+        const hasContact  = !!(patientData.contact && String(patientData.contact).trim());
+        const hasName     = !!(patientData.name   && patientData.name.trim());
+        const hasAge      = !!(patientData.age    && patientData.age !== 0);
+        const hasGender   = !!(patientData.gender && patientData.gender.trim());
+        if (hasName && hasAge && hasGender && !hasContact) {
+            console.log('📞 Returning phone-number request directly (no LLM)');
+            return res.json({ text: `Thank you, ${patientData.name}. Could you please share your phone number?`, timestamp: new Date().toISOString() });
+        }
+        if (hasName && hasAge && hasGender && hasContact && !hasSymptoms) {
+            console.log('🩺 Returning symptoms request directly (no LLM)');
+            return res.json({ text: `Thank you. What brings you in today? Please describe your symptoms.`, timestamp: new Date().toISOString() });
+        }
+
+        // 1. Follow-up phase + differential has an unasked question → return it directly
+        if (needsMoreFollowUp && nextMandatoryQuestion) {
+            console.log('❓ Returning discriminating question directly (no LLM):', nextMandatoryQuestion);
+            return res.json({ text: nextMandatoryQuestion, timestamp: new Date().toISOString() });
+        }
+
+        // 2. Follow-up complete + differential exists → auto-conclude (no LLM)
+        if (!needsMoreFollowUp && hasSymptoms && differential.length) {
+            const top = differential[0];
+            const conf = top.probability >= 0.70 ? 'High' : top.probability >= 0.50 ? 'Medium' : 'Low';
+            const reason = (top.evidence_for || []).length
+                ? `Patient reported ${top.evidence_for.slice(0, 3).join(', ')}.`
+                : 'Based on reported symptoms and follow-up answers.';
+            const conclusionText = `Diagnosis: ${top.condition}\nConfidence: ${conf}\nReason: ${reason}\nI have sufficient information to book your appointment now.`;
+            console.log('🩺 Auto-concluding from differential:', top.condition);
+            return res.json({ text: conclusionText, timestamp: new Date().toISOString() });
+        }
+
+        // 3. Otherwise fall through to LLM (basic info collection, or no differential yet)
+        const followUpInstruction = needsMoreFollowUp
+            ? `\n\n🔴 Ask ONE short follow-up question not already asked (duration, onset, severity, triggers, or associated symptoms). Do NOT repeat any previous question.`
+            : hasSymptoms
+            ? `\n\n🟢 FOLLOW-UP COMPLETE — respond with ONLY:\nDiagnosis: [condition]\nConfidence: [Low/Medium/High]\nReason: [one sentence]\nI have sufficient information to book your appointment now.`
+            : '';
+
+        const responseGuidelines = `\n\nRULES:\n- NEVER ask for information already collected.\n- ONLY ask about symptoms the patient mentioned.\n- If patient says "I don't know", move on.\n- One question at a time.`;
+
+        const systemInstruction = `${systemPrompt}${patientContext}${genderWarning}${questionContext}${differentialContext}${followUpInstruction}${responseGuidelines}`;
 
         let text;
 
@@ -492,7 +587,7 @@ app.post('/api/medical-chat', async (req, res) => {
 
         // --- FALLBACK: Ollama ---
         if (!text && hfServiceAvailable) {
-            const ollamaMessages = buildMedicalChatPrompt(message, conversationHistory, systemPrompt, patientData);
+            const ollamaMessages = buildMedicalChatPrompt(message, conversationHistory, systemInstruction, patientData);
             text = await generateAIText(ollamaMessages);
             console.log('✅ Ollama fallback response generated');
         }
@@ -610,6 +705,301 @@ app.post('/api/extract-patient-info', async (req, res) => {
         });
     }
 });
+
+// Update differential diagnosis after each follow-up answer
+// Normalises any differential item to the canonical structured format.
+// Accepts both the new schema (probability/evidence_for/evidence_against) and
+// the old schema (score/supporting/against) for backward compatibility.
+function normalizeDifferentialItem(raw) {
+    return {
+        condition:              raw.condition              || 'Unknown',
+        probability:            raw.probability            ?? raw.score ?? 0,
+        evidence_for:           raw.evidence_for           || raw.supporting || [],
+        evidence_against:       raw.evidence_against       || raw.against    || [],
+        discriminating_question: raw.discriminating_question || ''
+    };
+}
+
+app.post('/api/update-differential', async (req, res) => {
+    try {
+        const { conversationText, symptoms, gender, currentDifferential } = req.body;
+        console.log('🧬 Differential update — symptoms:', symptoms, '| conversationLength:', (conversationText||'').length, 'chars | turns:', (conversationText||'').split('\n').filter(l=>l.startsWith('user:')||l.startsWith('assistant:')).length);
+
+        const priorStr = currentDifferential && currentDifferential.length
+            ? `CURRENT DIFFERENTIAL:\n${currentDifferential.map((d,i) => `${i+1}. ${d.condition} (probability: ${d.probability}) — evidence_for: [${(d.evidence_for||[]).join(', ')}]`).join('\n')}\n\n`
+            : '';
+
+        // Build contextual Q&A summary from conversation (question → answer pairs)
+        const lines = (conversationText || '').split('\n').map(l => l.trim()).filter(Boolean);
+        const qaPairs = [];
+        let lastQ = null;
+        let pastSymptoms = false;
+        for (const line of lines) {
+            if (line.startsWith('assistant:')) {
+                const content = line.replace(/^assistant:\s*/i, '');
+                const qs = content.match(/[^.!?\n]*\?/g);
+                if (qs) lastQ = qs[qs.length - 1].trim();
+            } else if (line.startsWith('user:')) {
+                const content = line.replace(/^user:\s*/i, '').trim();
+                if (!pastSymptoms && symptoms && content.toLowerCase().includes(
+                    (symptoms.toLowerCase().split(/[\s,]+/).find(w => w.length > 3) || '').slice(0, 8)
+                )) {
+                    pastSymptoms = true;
+                    continue;
+                }
+                if (pastSymptoms && content.length > 2) {
+                    qaPairs.push(lastQ ? `${lastQ} → ${content}` : content);
+                    lastQ = null;
+                }
+            }
+        }
+        const followUpSummary = qaPairs.length
+            ? `\nFollow-up Q&A:\n${qaPairs.map((p, i) => `  ${i+1}. ${p}`).join('\n')}`
+            : '';
+
+        const prompt = `You are a senior physician building a differential diagnosis. Analyse ALL the patient information below carefully before generating your answer.
+
+${priorStr}PATIENT SYMPTOMS: ${symptoms || 'see conversation'}${followUpSummary}
+Patient gender: ${gender || 'unknown'}
+
+FULL CONVERSATION:
+${conversationText}
+
+REASONING RULES — follow these strictly:
+1. Consider the COMPLETE symptom cluster. No single symptom decides the diagnosis.
+2. Consider ALL disease categories: infections (typhoid, malaria, dengue, UTI, pneumonia), GI (ulcer, appendicitis, cholecystitis, pancreatitis, colitis), systemic (anaemia, hypothyroid, diabetes), cardiac, musculoskeletal, neurological.
+3. FEVER rules:
+   - High sustained fever + abdominal pain + relative bradycardia → think Typhoid fever
+   - High fever + rigors + sweating pattern → think Malaria
+   - Fever + diarrhoea + vomiting → think Acute gastroenteritis or Food poisoning
+   - Fever + RUQ pain → think Cholecystitis or Hepatitis
+4. GERD ONLY if the patient explicitly mentions heartburn, acid taste, or regurgitation after meals. Do NOT assign GERD to abdominal pain, fever, or diarrhoea alone.
+5. Pain LOCATION matters: RUQ=liver/gallbladder, RLQ=appendix/ovary, LLQ=colon/diverticular, epigastric=ulcer/pancreatitis, diffuse=infection/peritonitis.
+6. Weight loss + fatigue + bowel change → think malabsorption, coeliac, IBD, or malignancy — NOT GERD.
+7. Score honestly: a score of 0.85 means you are very confident. If unsure, keep scores below 0.60.
+
+Return ONLY a JSON array of exactly 3 conditions, most likely first. Each item:
+{
+  "condition": "specific clinical name",
+  "probability": 0.0-1.0,
+  "evidence_for": ["patient fact 1", "patient fact 2"],
+  "evidence_against": ["fact arguing against this"],
+  "discriminating_question": "one question that would confirm or rule out this condition"
+}
+
+Return ONLY the JSON array, no explanation, no markdown.`;
+
+        let text = '';
+
+        if (isGeminiAvailable()) {
+            try {
+                const m = genAI.getGenerativeModel({
+                    model: 'gemini-2.0-flash',
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 400 }
+                });
+                const result = await m.generateContent(prompt);
+                text = result.response.text().trim();
+            } catch (e) {
+                if (e.message && e.message.includes('429')) markGeminiQuotaExhausted();
+            }
+        }
+
+        if (!text && hfServiceAvailable) {
+            text = await generateAIText(prompt, 400);
+        }
+
+        if (!text) return res.json({ error: 'AI unavailable', differential: currentDifferential || [] });
+
+        // Parse JSON array from response
+        let differential = [];
+        try {
+            const clean = text.replace(/```json\n?|\n?```/g, '').trim();
+            const start = clean.indexOf('[');
+            const end   = clean.lastIndexOf(']');
+            if (start !== -1 && end !== -1) {
+                const parsed = JSON.parse(clean.substring(start, end + 1));
+                differential = parsed.map(normalizeDifferentialItem);
+            }
+        } catch (e) {
+            console.warn('⚠️ Could not parse differential JSON:', e.message);
+        }
+
+        console.log('✅ Differential updated:', differential.map(d =>
+            `${d.condition}(p=${d.probability}, for=${d.evidence_for.length}, against=${d.evidence_against.length})`
+        ).join(' | '));
+        res.json({ differential });
+
+    } catch (error) {
+        console.error('❌ /api/update-differential error:', error);
+        res.json({ error: error.message, differential: [] });
+    }
+});
+
+// =============================================================================
+// Image analysis — uses minicpm-v (or any available vision model) via Ollama
+// =============================================================================
+app.post('/api/analyze-image', async (req, res) => {
+    try {
+        const { image, context } = req.body;  // image = base64 string (no data: prefix)
+        if (!image) return res.status(400).json({ error: 'No image provided' });
+
+        if (!visionModelAvailable) {
+            return res.status(503).json({
+                error: 'Vision model not available',
+                hint: `Run: ollama pull ${VISION_MODEL}`
+            });
+        }
+
+        const systemPrompt = context
+            ? `You are a medical assistant helping with symptom assessment. Context: ${context}`
+            : 'You are a medical assistant helping assess patient symptoms from photos.';
+
+        const userPrompt = `Examine this image carefully and describe:
+1. Any visible skin conditions, rashes, lesions, swelling, redness, or discolouration
+2. Location and extent of the affected area
+3. Notable features: texture, colour, borders, any discharge or crusting
+4. Any other medically relevant observations
+
+Be specific and clinical. If the image is unclear or does not show a medical condition, say so.
+Do NOT provide a diagnosis — describe only what you observe.`;
+
+        console.log(`🖼️ Image analysis request — vision model: ${VISION_MODEL}`);
+
+        const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+            model: VISION_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user',   content: userPrompt, images: [image] }
+            ],
+            stream: false,
+            options: { num_predict: 400, temperature: 0.2 }
+        }, { timeout: 120000 });
+
+        const description = response.data.message.content.trim();
+        console.log(`✅ Image analysis complete (${description.length} chars)`);
+        res.json({ description });
+
+    } catch (error) {
+        console.error('❌ Image analysis error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Dedicated diagnosis endpoint — called when completion signal fires but diagnosis is still missing
+app.post('/api/diagnose', async (req, res) => {
+    try {
+        const { conversationText, symptoms, gender } = req.body;
+
+        const prompt = `You are a medical expert. Based on the following patient conversation, provide a clinical diagnosis.
+
+CONVERSATION:
+${conversationText}
+
+Patient symptoms: ${symptoms || 'as described in conversation'}
+Patient gender: ${gender || 'unknown'}
+
+Respond with ONLY this exact format (no extra text):
+Diagnosis: [specific clinical condition, e.g. "Possible acute gastritis" or "Likely tension headache"]
+Confidence: [Low / Medium / High]
+Reason: [one sentence explaining the diagnosis based on the symptoms]`;
+
+        let text = '';
+
+        if (isGeminiAvailable()) {
+            try {
+                const diagModel = genAI.getGenerativeModel({
+                    model: 'gemini-2.0-flash',
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 150 }
+                });
+                const result = await diagModel.generateContent(prompt);
+                text = result.response.text().trim();
+            } catch (e) {
+                if (e.message && e.message.includes('429')) markGeminiQuotaExhausted();
+            }
+        }
+
+        if (!text && hfServiceAvailable) {
+            text = await generateAIText(prompt, 150);
+        }
+
+        if (!text) return res.json({ error: 'AI unavailable' });
+
+        const diagMatch   = text.match(/diagnosis:\s*(.+?)(?:\n|$)/i);
+        const confMatch   = text.match(/confidence:\s*(low|medium|high)/i);
+        const reasonMatch = text.match(/reason:\s*(.+?)(?:\n|$)/i);
+
+        const diagnosis  = diagMatch   ? diagMatch[1].trim()   : null;
+        const confidence = confMatch   ? confMatch[1].charAt(0).toUpperCase() + confMatch[1].slice(1).toLowerCase() : 'Low';
+        const reason     = reasonMatch ? reasonMatch[1].trim() : '';
+
+        console.log('✅ Diagnosis generated:', diagnosis, '|', confidence);
+        res.json({ diagnosis, confidence, reason });
+
+    } catch (error) {
+        console.error('❌ /api/diagnose error:', error);
+        res.json({ error: error.message });
+    }
+});
+
+// =============================================================================
+// AI Clinical Suggestions — generated once at booking time, stored in appointment
+// =============================================================================
+async function generateClinicalSuggestions(diagnosis, symptoms, age, gender, symptomsSummary) {
+    const prompt = `You are a senior clinician reviewing a new patient appointment. Based on the information below, provide concise clinical guidance for the consulting doctor.
+
+Patient: ${age || '?'} year old ${gender || 'patient'}
+Chief complaint: ${symptoms || 'not specified'}
+${symptomsSummary && symptomsSummary !== symptoms ? `Symptom details: ${symptomsSummary}` : ''}
+AI preliminary diagnosis: ${diagnosis || 'pending'}
+
+Respond ONLY with a JSON object in this exact format (no markdown, no extra text):
+{
+  "treatment": ["suggestion 1", "suggestion 2", "suggestion 3"],
+  "labTests": ["test 1", "test 2"],
+  "urgency": "routine"
+}
+
+Rules:
+- "treatment": 2–5 concise treatment/management suggestions (medication class, lifestyle, monitoring)
+- "labTests": 1–4 relevant investigations to confirm or rule out the diagnosis (standard test names)
+- "urgency": one of "routine", "urgent", or "emergency" based on the presentation
+- Keep each suggestion under 15 words
+- Do NOT include specific brand names or dosages`;
+
+    let text = '';
+    if (isGeminiAvailable()) {
+        try {
+            const m = genAI.getGenerativeModel({
+                model: 'gemini-2.0-flash',
+                generationConfig: { temperature: 0.2, maxOutputTokens: 300 }
+            });
+            const result = await m.generateContent(prompt);
+            text = result.response.text().trim();
+        } catch (e) {
+            if (e.message && e.message.includes('429')) markGeminiQuotaExhausted();
+            console.warn('⚠️ Gemini clinical suggestions failed:', e.message);
+        }
+    }
+    if (!text && hfServiceAvailable) {
+        try { text = await generateAIText(prompt, 300); } catch (_) {}
+    }
+    if (!text) return null;
+
+    try {
+        const clean = text.replace(/```json\n?|\n?```/g, '').trim();
+        const start = clean.indexOf('{');
+        const end   = clean.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+            const parsed = JSON.parse(clean.substring(start, end + 1));
+            console.log('✅ Clinical suggestions generated:', parsed.urgency,
+                `| ${parsed.treatment.length} treatments, ${parsed.labTests.length} labs`);
+            return parsed;
+        }
+    } catch (e) {
+        console.warn('⚠️ Could not parse clinical suggestions JSON:', e.message);
+    }
+    return null;
+}
 
 // New endpoint for sending appointment notification emails
 app.post('/api/send-appointment-email', async (req, res) => {
@@ -932,63 +1322,48 @@ Respond in JSON format:
 
 // Helper function to build medical chat prompt with context
 // Returns a messages array for Ollama /api/chat (proper role-based — prevents repetition)
-function buildMedicalChatPrompt(message, conversationHistory, systemPrompt, patientData) {
-    const extractedFields = Object.keys(patientData).filter(key =>
-        patientData[key] && patientData[key] !== "" && patientData[key] !== "N/A" && patientData[key] !== 0
-    );
+function buildMedicalChatPrompt(message, conversationHistory, systemInstruction, patientData) {
+    // Build a concise clinical summary of what is known so far
+    const pd = patientData;
+    const knownFacts = [];
+    if (pd.name)      knownFacts.push(`Name: ${pd.name}`);
+    if (pd.age)       knownFacts.push(`Age: ${pd.age}`);
+    if (pd.gender)    knownFacts.push(`Gender: ${pd.gender}`);
+    if (pd.contact)   knownFacts.push(`Contact: ${pd.contact}`);
+    if (pd.symptoms)  knownFacts.push(`Chief complaint: ${pd.symptoms}`);
+    if (pd.preferredTime) knownFacts.push(`Preferred time: ${pd.preferredTime}`);
 
-    const missingFields = ['name', 'age', 'gender', 'contact', 'symptoms', 'diagnosis']
-        .filter(field => !extractedFields.includes(field));
-
-    const patientContext = extractedFields.length > 0 ?
-        `\nCURRENT PATIENT INFORMATION COLLECTED:\n${extractedFields.map(field => `- ${field}: ${patientData[field]}`).join('\n')}\nSTILL MISSING: ${missingFields.join(', ')}\nDo NOT ask for information already collected.` :
-        'NO PATIENT INFORMATION COLLECTED YET. You need: name, age, gender, contact, symptoms and diagnosis.';
-
-    // Only inject symptom-specific questions once symptoms are known
-    const symptoms = (patientData.symptoms || '').toLowerCase();
-    let questionContext = '';
-    if (symptoms) {
-        const { specialty, context: kbContext } = keywordFallback(patientData.symptoms, patientData.gender || null);
-        if (kbContext && kbContext.trim()) {
-            questionContext = `\nSUGGESTED FOLLOW-UP QUESTIONS FOR ${specialty.toUpperCase()} (only use if relevant to what THIS patient said):\n${kbContext}`;
+    // Summarise follow-up answers from conversation (user turns after symptoms were given)
+    const followUpFacts = [];
+    let symptomsFound = false;
+    for (const msg of conversationHistory) {
+        if (!symptomsFound && msg.role === 'user' && pd.symptoms &&
+            msg.content.toLowerCase().includes(pd.symptoms.toLowerCase().split(' ')[0])) {
+            symptomsFound = true;
+            continue;
+        }
+        if (symptomsFound && msg.role === 'user' && msg.content.trim().length > 3) {
+            followUpFacts.push(`- ${msg.content.trim()}`);
         }
     }
 
-    const gender = patientData.gender || null;
-    const genderWarning = gender === 'Male'
-        ? '\n⚠️ PATIENT IS MALE. NEVER ask about periods, menstruation, pregnancy, or female-specific conditions.'
-        : gender === 'Female'
-        ? '\n⚠️ PATIENT IS FEMALE. NEVER ask about prostate or male-specific conditions.'
-        : '';
+    const askedQuestions = (pd.askedQuestions || []);
+    const differential   = (pd.differential   || []);
 
-    const needsBasic = !patientData.name || !patientData.age || !patientData.gender;
-    const symptomWarning = symptoms
-        ? `\n⚠️ PATIENT'S SYMPTOMS ARE: "${patientData.symptoms}". ONLY ask follow-up questions about THESE symptoms. Do NOT introduce or ask about any other medical condition or symptom the patient has NOT mentioned.`
-        : needsBasic
-        ? '\n⚠️ You do NOT yet have name, age, and gender. Ask for ALL THREE together in one question.'
-        : '\n⚠️ You have name/age/gender. Now ask for phone number, then symptoms.';
+    const clinicalSummary = [
+        knownFacts.length   ? `PATIENT INFO:\n${knownFacts.join(' | ')}` : '',
+        followUpFacts.length ? `FOLLOW-UP ANSWERS SO FAR:\n${followUpFacts.join('\n')}` : '',
+        differential.length  ? `CURRENT DIFFERENTIAL:\n${differential.map((d,i) => `${i+1}. ${d.condition} (p=${d.probability}) — ${(d.evidence_for||[]).join(', ')}`).join('\n')}` : '',
+        askedQuestions.length ? `QUESTIONS ALREADY ASKED (DO NOT REPEAT ANY OF THESE):\n${askedQuestions.map((q,i) => `${i+1}. ${q}`).join('\n')}` : ''
+    ].filter(Boolean).join('\n\n');
 
-    // Follow-up phase enforcement
-    const hasSymptoms = !!(patientData.symptoms && patientData.symptoms.trim());
-    const allBasicCollected = patientData.name && patientData.age && patientData.gender && patientData.contact && patientData.symptoms;
-    const assistantTurns = conversationHistory.filter(m => m.role === 'assistant').length;
-    const followUpsDone = allBasicCollected ? Math.max(0, assistantTurns - 4) : 0;
-    const needsMoreFollowUp = hasSymptoms && followUpsDone < 3;
+    const systemContent = `${systemInstruction}\n\n--- CLINICAL SUMMARY ---\n${clinicalSummary}\n--- END SUMMARY ---`;
 
-    const followUpInstruction = needsMoreFollowUp
-        ? `\n\n🔴 FOLLOW-UP PHASE — YOU MUST ASK MORE QUESTIONS:\n- You have the patient's basic info and symptoms.\n- You have asked ${followUpsDone} follow-up question(s) so far. You need at least 3.\n- Ask ONE specific follow-up question now about: duration, severity (1-10), onset, triggers, associated symptoms, or relevant medical history.\n- DO NOT ask about appointment time yet.\n- DO NOT say "I have sufficient information" yet.`
-        : hasSymptoms
-        ? `\n\n✅ FOLLOW-UP COMPLETE — Ask appointment time preference (morning/afternoon/evening), then say "I have sufficient information to book your appointment now."`
-        : '';
-
-    const systemContent = `${systemPrompt}\n\n${patientContext}${genderWarning}${symptomWarning}${questionContext}${followUpInstruction}\n\nRESPONSE GUIDELINES:\n- Ask name, age, and gender TOGETHER in one question if any are missing\n- NEVER ask for information you already have\n- Do NOT repeat questions already asked\n- ONLY ask about symptoms the patient has explicitly mentioned\n- If the user says "I don't know" or denies a symptom, accept it and move on — do NOT repeat\n- Ask at least 3 follow-up symptom questions before concluding\n- If you cannot diagnose, say: "Diagnosis is unknown"\n- Say "I have sufficient information to book your appointment now." ONLY after 3+ follow-up questions AND appointment time preference is collected.`;
-
-    // Build messages array with proper roles
+    // Build messages: system + only last 4 raw turns for immediate context
     const messages = [{ role: 'system', content: systemContent }];
 
-    // Add conversation history as proper user/assistant turns
     if (conversationHistory.length > 0) {
-        conversationHistory.slice(-6).forEach(msg => {
+        conversationHistory.slice(-4).forEach(msg => {
             messages.push({
                 role: msg.role === 'assistant' ? 'assistant' : 'user',
                 content: msg.content
@@ -1451,8 +1826,40 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
   return null;
 }
 
-// booking endpoint: create appointment and persist and update excel
-// booking endpoint: create appointment and persist and update excel
+// GET /api/doctors/slots?doctorName=X&count=15
+// Returns the next N available slots for a specific doctor (for calendar display)
+app.get('/api/doctors/slots', async (req, res) => {
+  try {
+    const { doctorName, count = 15 } = req.query;
+    if (!doctorName) return res.status(400).json({ success: false, error: 'doctorName required' });
+
+    const doctors = await knowledgeBaseReader.readKnowledgeBase();
+    const doctor = doctors.find(d =>
+      (d.name || '').toLowerCase().includes(doctorName.toLowerCase())
+    );
+    if (!doctor) return res.status(404).json({ success: false, error: 'Doctor not found' });
+
+    const realAppts = await readAppointments();
+    const fakeAppts = [...realAppts];
+    const slots = [];
+    const limit = Math.min(parseInt(count) || 15, 50);
+
+    for (let i = 0; i < limit; i++) {
+      const slot = await computeNextAvailableSlot(doctor, fakeAppts, 15, null);
+      if (!slot) break;
+      slots.push(slot);
+      fakeAppts.push({
+        doctorName: doctor.name,
+        appointmentDate: slot.appointmentDate,
+        appointmentTime: slot.appointmentTime
+      });
+    }
+    res.json({ success: true, slots });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/doctors/available?specialization=X&preferredTime=morning
 // Returns matching doctors with their next available slot in the preferred window
 app.get('/api/doctors/available', async (req, res) => {
@@ -1486,7 +1893,7 @@ app.get('/api/doctors/available', async (req, res) => {
 
 app.post('/api/book-appointment', async (req, res) => {
   try {
-    const { doctorName, patient, preferredTime } = req.body;
+    const { doctorName, patient, preferredTime, requestedDate, requestedTime } = req.body;
     if (!doctorName || !patient) {
       return res.status(400).json({ success: false, error: 'doctorName and patient required' });
     }
@@ -1504,7 +1911,9 @@ app.post('/api/book-appointment', async (req, res) => {
 
       if (!doctor) throw new Error('Doctor not found');
 
-      const slot = await computeNextAvailableSlot(doctor, currentAppts, 15, preferredTime || null);
+      const slot = (requestedDate && requestedTime)
+        ? { appointmentDate: requestedDate, appointmentTime: requestedTime }
+        : await computeNextAvailableSlot(doctor, currentAppts, 15, preferredTime || null);
       if (!slot) throw new Error('No available slot found in the next few days/hours');
 
       // Resolve doctorId from auth DB so doctor portal can filter appointments
@@ -1512,6 +1921,20 @@ app.post('/api/book-appointment', async (req, res) => {
       const resolvedName = (doctor.name || doctor.doctorName || doctor['Doctor Name'] || doctorName).toString();
       const authDoctors = listAuthDoctors();
       const matched = authDoctors.find(d => d.name.toLowerCase() === resolvedName.toLowerCase());
+
+      // Generate AI clinical suggestions for the doctor (non-blocking — failures are silent)
+      let aiSuggestions = null;
+      try {
+          aiSuggestions = await generateClinicalSuggestions(
+              patient.diagnosis,
+              patient.issues,
+              patient.age,
+              patient.gender,
+              patient.symptomsSummary || patient.issues
+          );
+      } catch (e) {
+          console.warn('⚠️ Clinical suggestions skipped:', e.message);
+      }
 
       const appt = {
         id: Date.now().toString(),
@@ -1521,7 +1944,8 @@ app.post('/api/book-appointment', async (req, res) => {
         appointmentDate: slot.appointmentDate,
         appointmentTime: slot.appointmentTime,
         status: 'pending',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        aiSuggestions: aiSuggestions || null
       };
 
      // --- Save appointment locally ---

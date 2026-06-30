@@ -19,5 +19,27 @@
         "endTime": "17:00"
       }
     }
+  },
+  "GP002": {
+    "days": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "startTime": "09:00",
+    "endTime": "17:00",
+    "slotDuration": 15,
+    "dateOverrides": {
+      "2026-05-17": {
+        "available": false,
+        "startTime": "09:00",
+        "endTime": "17:00"
+      }
+    },
+    "updatedAt": "2026-06-09T09:08:19.045Z",
+    "doctorName": "Dr. Michael Chen"
   }
 }

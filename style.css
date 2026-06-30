@@ -1020,3 +1020,26 @@ input[type="password"] {
     cursor: pointer; white-space: nowrap;
 }
 .select-btn:hover { opacity: 0.9; }
+
+.no-pref-btn {
+    background: #f0f0f0; color: #444; border: 2px solid #ccc;
+    border-radius: 8px; padding: 0.65rem 1.5rem;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+.no-pref-btn:hover { background: #e2e2e2; border-color: #999; }
+
+.calendar-slots-container { padding: 0 0.5rem 1rem; }
+.calendar-date-group { margin-bottom: 1.25rem; }
+.calendar-date-label {
+    font-weight: 700; font-size: 0.95rem; color: #444;
+    padding: 0.4rem 0; border-bottom: 1px solid #eee; margin-bottom: 0.5rem;
+}
+.calendar-time-slots { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.slot-btn {
+    background: #fff; border: 1.5px solid #667eea; color: #667eea;
+    border-radius: 6px; padding: 0.35rem 0.75rem;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.slot-btn:hover { background: #667eea; color: #fff; }

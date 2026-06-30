@@ -15,6 +15,9 @@ class PatientData {
         this.extractionHistory = []; // Track what's been extracted
         this.diagnosis = "";           // AI-generated diagnosis
         this.diagnosisConfidence = ""; // low / medium / high
+        this.differential = [];        // running differential: [{condition, probability, evidence_for, evidence_against, discriminating_question}]
+        this.askedQuestions = [];      // questions the AI has already asked (to prevent repetition)
+        this.symptomsSummary = '';     // running summary: initial complaint + all follow-up answers
     }
 
     hasBasicInfo() {
@@ -144,7 +147,7 @@ Return a JSON object with the extracted information.
     async callGeminiBackend(message) {
         try {
             console.log('🔄 Calling Gemini backend...');
-            
+
             const response = await fetch(`${this.baseUrl}/api/medical-chat`, {
                 method: 'POST',
                 headers: {
@@ -422,10 +425,28 @@ Return a JSON object with the extracted information.
 
     validateSymptoms(symptoms) {
         const symptomsStr = symptoms.trim();
-        if (symptomsStr.length > 3 && symptomsStr.length < 500) {
-            return symptomsStr;
+        if (symptomsStr.length < 5 || symptomsStr.length >= 500) return null;
+        const lower = symptomsStr.toLowerCase();
+        // Reject placeholder / extraction-failure text and AI question phrases
+        const PLACEHOLDERS = [
+            'not provided', 'not specified', 'not mentioned', 'not stated', 'not given',
+            'not yet provided', 'not collected', 'not available', 'not applicable',
+            'unknown', 'none', 'null', 'n/a', 'no symptoms', 'no complaints',
+            'not reported', 'unspecified', 'to be determined', 'tbd',
+            'please describe', 'describe your symptoms', 'what brings you in',
+            'what are your symptoms', 'what seems to be', 'how can i help',
+            'tell me about your', 'could you describe', 'can you describe'
+        ];
+        if (PLACEHOLDERS.some(p => lower.startsWith(p))) {
+            console.warn('⚠️ Rejected placeholder/AI-phrase symptoms:', symptomsStr);
+            return null;
         }
-        return null;
+        // Must not be a phone number
+        if (/^\+?[\d\s\-\(\)]{7,}$/.test(symptomsStr)) {
+            console.warn('⚠️ Rejected numeric-only symptoms:', symptomsStr);
+            return null;
+        }
+        return symptomsStr;
     }
 
     validateDiagnosis(diagnosis) {
@@ -590,7 +611,7 @@ Return a JSON object with the extracted information.
 
     getFallbackResponse(message) {
         const data = this.patientData;
-        const msgLower = message.toLowerCase();
+        void message; // message used via patientData flow
 
         // Initial greeting
         if (this.conversationHistory.length === 0) {
@@ -869,12 +890,90 @@ class EnhancedAppointmentCreator {
             console.log('⚡ Skipping LLM extraction — all required fields already captured');
         }
 
+        // Update differential BEFORE calling the LLM so it has fresh data this turn
+        const pd = this.llmInterface.patientData;
+        if (pd.hasBasicInfo() && !pd.detailedAssessmentDone) {
+            try {
+                const diffRes = await fetch(`${window.location.origin}/api/update-differential`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversationText,
+                        symptoms: pd.symptoms,
+                        gender: pd.gender,
+                        currentDifferential: pd.differential
+                    })
+                });
+                const diffData = await diffRes.json();
+                if (diffData.differential && diffData.differential.length) {
+                    pd.differential = diffData.differential;
+                    console.log('🧬 Differential (pre-LLM):', diffData.differential.map(d =>
+                        `${d.condition}(p=${d.probability}, for=${(d.evidence_for||[]).length}, against=${(d.evidence_against||[]).length})`
+                    ).join(' | '));
+                }
+            } catch (e) {
+                console.warn('⚠️ Pre-LLM differential update failed:', e.message);
+            }
+
+            // Build symptomsSummary: initial complaint + contextual Q&A pairs
+            // Each follow-up answer is stored with the question that prompted it,
+            // so "No, not really." becomes "Does the pain worsen after eating? No, not really."
+            const history = this.llmInterface.conversationHistory;
+            const qaPairs = [];
+            let pastInitialSymptoms = false;
+            let pendingQuestion = null;
+            const symptomsKeyword = pd.symptoms
+                ? pd.symptoms.toLowerCase().split(/[\s,]+/).find(w => w.length > 3) || ''
+                : '';
+            for (const msg of history) {
+                // Find the user turn where symptoms were first mentioned
+                if (!pastInitialSymptoms && msg.role === 'user' &&
+                    symptomsKeyword && msg.content.toLowerCase().includes(symptomsKeyword)) {
+                    pastInitialSymptoms = true;
+                    continue;
+                }
+                if (!pastInitialSymptoms) continue;
+
+                if (msg.role === 'assistant') {
+                    // Extract the question sentence(s) from the AI response
+                    const questionMatch = msg.content.match(/[^.!?\n]*\?/g);
+                    if (questionMatch && questionMatch.length > 0) {
+                        // Use the last question sentence (most specific)
+                        pendingQuestion = questionMatch[questionMatch.length - 1].trim();
+                    }
+                } else if (msg.role === 'user' && msg.content.trim().length > 2) {
+                    const answer = msg.content.trim();
+                    if (pendingQuestion) {
+                        qaPairs.push(`${pendingQuestion} → ${answer}`);
+                        pendingQuestion = null;
+                    } else {
+                        qaPairs.push(answer);
+                    }
+                }
+            }
+            console.log('📝 symptomsSummary Q&A pairs:', qaPairs);
+            pd.symptomsSummary = pd.symptoms
+                ? [pd.symptoms, ...qaPairs].join('\n')
+                : '';
+        }
+
         // Get AI response
         const aiResponse = await this.llmInterface.callLLM(message);
         this.addMessage('ai', aiResponse);
 
         // Add AI response to history
         this.llmInterface.conversationHistory.push({ role: 'assistant', content: aiResponse });
+
+        // Track questions asked — extract any sentence ending in '?' from AI response
+        const questionSentences = aiResponse.match(/[^.!?]*\?/g);
+        if (questionSentences) {
+            questionSentences.forEach(q => {
+                const trimmed = q.trim();
+                if (trimmed.length > 10 && !this.llmInterface.patientData.askedQuestions.includes(trimmed)) {
+                    this.llmInterface.patientData.askedQuestions.push(trimmed);
+                }
+            });
+        }
 
         // Check if AI provided the exact completion signal
         if (aiResponse.toLowerCase().includes('i have sufficient information to book your appointment now')) {
@@ -953,8 +1052,35 @@ class EnhancedAppointmentCreator {
                     return;
                 }
 
-                this.addMessage('ai', "✅ Medical assessment complete! Let me find the right doctors for you...");
-                await this.showDoctorSelection();
+                // If diagnosis still missing, make a dedicated call to get it
+                if (!this.llmInterface.patientData.diagnosis) {
+                    try {
+                        const diagRes = await fetch(`${window.location.origin}/api/diagnose`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                conversationText: this.llmInterface.getConversationSummary(),
+                                symptoms: this.llmInterface.patientData.symptoms,
+                                gender: this.llmInterface.patientData.gender
+                            })
+                        });
+                        const diagData = await diagRes.json();
+                        if (diagData.diagnosis) {
+                            const validated = this.llmInterface.validateDiagnosis(diagData.diagnosis);
+                            if (validated) {
+                                this.llmInterface.patientData.diagnosis = validated;
+                                this.llmInterface.patientData.diagnosisConfidence = diagData.confidence || 'Low';
+                                console.log('✅ Diagnosis from /api/diagnose:', validated);
+                                this.updateProgress();
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ /api/diagnose call failed:', e.message);
+                    }
+                }
+
+                this.addMessage('ai', "✅ Medical assessment complete! Let me show you the available doctors.");
+                await this.showPreferredDoctorSelection();
             })();
             return;
         }
@@ -969,7 +1095,7 @@ class EnhancedAppointmentCreator {
         // Track follow-up questions
         if (this.llmInterface.patientData.hasBasicInfo() && !this.llmInterface.patientData.detailedAssessmentDone) {
             this.llmInterface.followUpQuestionsAsked++;
-            
+
             if (this.llmInterface.followUpQuestionsAsked >= this.llmInterface.maxFollowUpQuestions) {
                 this.addMessage('ai', "✅ Sufficient information collected. Processing appointment...");
                 this.llmInterface.patientData.detailedAssessmentDone = true;
@@ -987,7 +1113,7 @@ class EnhancedAppointmentCreator {
                 const _b = document.getElementById('sendBtn');
                 if (_i) _i.disabled = true;
                 if (_b) _b.disabled = true;
-                setTimeout(() => this.showDoctorSelection(), 1000);
+                setTimeout(() => this.showPreferredDoctorSelection(), 1000);
             } else {
                 this.addMessage('ai', "❌ I need more information to book your appointment. Please provide your details.");
             }
@@ -1215,7 +1341,128 @@ class EnhancedAppointmentCreator {
         }
     }
 
-    // ── Doctor Selection ──
+    // ── Doctor Calendar: show available slots and let patient pick one ──
+    async showDoctorCalendar(doctor) {
+        document.getElementById('loadingPanel').style.display = 'block';
+
+        try {
+            const res = await fetch(`${window.location.origin}/api/doctors/slots?doctorName=${encodeURIComponent(doctor.name)}&count=15`);
+            const data = await res.json();
+            const slots = data.slots || [];
+
+            document.getElementById('loadingPanel').style.display = 'none';
+
+            if (!slots.length) {
+                this.llmInterface.patientData.preferredDoctor = doctor.name;
+                this.llmInterface.patientData.detailedAssessmentDone = true;
+                await this.createAppointment();
+                return;
+            }
+
+            // Group slots by date
+            const byDate = {};
+            slots.forEach(s => {
+                if (!byDate[s.appointmentDate]) byDate[s.appointmentDate] = [];
+                byDate[s.appointmentDate].push(s.appointmentTime);
+            });
+
+            document.getElementById('calendarDoctorName').textContent =
+                `Dr. ${doctor.name} — ${doctor.specialization}`;
+
+            const container = document.getElementById('calendarSlots');
+            container.innerHTML = Object.entries(byDate).map(([date, times]) => {
+                const label = new Date(date + 'T12:00:00').toLocaleDateString('en-US',
+                    { weekday: 'long', month: 'long', day: 'numeric' });
+                const btns = times.map(t =>
+                    `<button class="slot-btn" onclick="window._pickSlot('${date}','${t}')">${t}</button>`
+                ).join('');
+                return `<div class="calendar-date-group">
+                    <div class="calendar-date-label">${label}</div>
+                    <div class="calendar-time-slots">${btns}</div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('calendarPanel').style.display = 'block';
+
+            window._pickSlot = async (date, time) => {
+                this._selectedSlot = { date, time };
+                document.getElementById('calendarPanel').style.display = 'none';
+                document.getElementById('loadingPanel').style.display = 'block';
+                this.llmInterface.patientData.preferredDoctor = doctor.name;
+                this.llmInterface.patientData.detailedAssessmentDone = true;
+                await this.createAppointment();
+            };
+
+        } catch (err) {
+            console.error('❌ showDoctorCalendar error:', err);
+            document.getElementById('loadingPanel').style.display = 'none';
+            this.llmInterface.patientData.preferredDoctor = doctor.name;
+            this.llmInterface.patientData.detailedAssessmentDone = true;
+            await this.createAppointment();
+        }
+    }
+
+    // ── Step 1: Ask if patient has a preferred doctor (show ALL doctors) ──
+    async showPreferredDoctorSelection() {
+        document.getElementById('chatContainer').style.display = 'none';
+        document.getElementById('loadingPanel').style.display = 'block';
+
+        try {
+            const docRes = await fetch(`${window.location.origin}/api/doctors/available`);
+            const docData = await docRes.json();
+            const doctors = docData.doctors || [];
+
+            document.getElementById('loadingPanel').style.display = 'none';
+
+            if (!doctors.length) {
+                await this.showDoctorSelection();
+                return;
+            }
+
+            const grid = document.getElementById('preferredDoctorCards');
+            grid.innerHTML = doctors.map((doc, idx) => {
+                const stars = this._renderStars(doc.rating);
+                const slotText = doc.nextSlot
+                    ? `Next slot: ${doc.nextSlot.appointmentDate} at ${doc.nextSlot.appointmentTime}`
+                    : 'Availability to be confirmed';
+                return `<div class="doctor-card" onclick="window._selectPreferredDoctor(${idx})">
+                    <div class="doctor-card-left">
+                        <div class="doctor-avatar">👨‍⚕️</div>
+                        <div class="doctor-info">
+                            <div class="doctor-name">Dr. ${doc.name}</div>
+                            <div class="doctor-spec">${doc.specialization}</div>
+                            <div class="doctor-slot${doc.nextSlot ? '' : ' no-slot'}">${slotText}</div>
+                        </div>
+                    </div>
+                    <div class="doctor-card-right">
+                        <div class="star-rating">${stars}<span class="rating-num">${doc.rating.toFixed(1)}</span></div>
+                        <button class="select-btn">Select</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            this._allDoctorList = doctors;
+            document.getElementById('preferredDoctorPanel').style.display = 'block';
+
+            window._selectPreferredDoctor = async (idx) => {
+                const chosen = this._allDoctorList[idx];
+                document.getElementById('preferredDoctorPanel').style.display = 'none';
+                await this.showDoctorCalendar(chosen);
+            };
+
+            window._noPreferredDoctor = async () => {
+                document.getElementById('preferredDoctorPanel').style.display = 'none';
+                await this.showDoctorSelection();
+            };
+
+        } catch (err) {
+            console.error('❌ showPreferredDoctorSelection error:', err);
+            document.getElementById('loadingPanel').style.display = 'none';
+            await this.showDoctorSelection();
+        }
+    }
+
+    // ── Step 2: Specialty-based doctor selection (shown when patient has no preference) ──
     async showDoctorSelection() {
         const data = this.llmInterface.patientData;
         document.getElementById('chatContainer').style.display = 'none';
@@ -1223,7 +1470,6 @@ class EnhancedAppointmentCreator {
 
         try {
             // Determine specialization from diagnosis or let server infer
-            const diagnosis = data.diagnosis || '';
             const symptoms  = data.symptoms  || '';
 
             // Load knowledge base to get specializations
@@ -1307,12 +1553,7 @@ class EnhancedAppointmentCreator {
             window._selectDoctor = async (idx) => {
                 const chosen = this._doctorList[idx];
                 document.getElementById('doctorSelectionPanel').style.display = 'none';
-                document.getElementById('loadingPanel').style.display = 'block';
-
-                // Patch patientData so createAppointment uses this doctor
-                this.llmInterface.patientData.preferredDoctor = chosen.name;
-                this.llmInterface.patientData.detailedAssessmentDone = true;
-                await this.createAppointment();
+                await this.showDoctorCalendar(chosen);
             };
 
         } catch (err) {
@@ -1480,7 +1721,6 @@ class EnhancedAppointmentCreator {
             let normalizedContact = this.normalizeContact ? this.normalizeContact(rawContact) : rawContact;
 
             // If normalizedContact looks like an email (no usable phone), prompt the user to enter phone for WhatsApp
-            const looksLikeEmail = normalizedContact && normalizedContact.includes && normalizedContact.includes('@');
             const looksLikePhone = normalizedContact && /\d/.test(normalizedContact) && normalizedContact.replace(/\D/g, '').length >= 8;
 
             if (!looksLikePhone) {
@@ -1504,13 +1744,16 @@ class EnhancedAppointmentCreator {
                const bookingPayload = {
                     doctorName: selectedDoctor.name,
                     preferredTime: data.preferredTime || null,
+                    requestedDate: this._selectedSlot ? this._selectedSlot.date : null,
+                    requestedTime: this._selectedSlot ? this._selectedSlot.time : null,
                     patient: {
                             name: appointmentResult.patient.name,
                             age: appointmentResult.patient.age,
                             gender: appointmentResult.patient.gender,
                             contact: appointmentResult.patient.contact,
                             issues: appointmentResult.patient.issues,
-                            diagnosis: appointmentResult.patient.diagnosis
+                            diagnosis: appointmentResult.patient.diagnosis,
+                            symptomsSummary: data.symptomsSummary || ''
                                 }
                         };
 
@@ -1731,7 +1974,7 @@ class EnhancedAppointmentCreator {
         return doctors;
     }
 
-    findNextAvailableSlot(doctor) {
+    findNextAvailableSlot(_doctor) {
         // Simple implementation - returns tomorrow at 10:00 AM
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1898,13 +2141,127 @@ document.addEventListener('DOMContentLoaded', function() {
 
     uploadCancelBtn.addEventListener('click', closeUploadPanel);
 
-    uploadConfirmBtn.addEventListener('click', () => {
+    uploadConfirmBtn.addEventListener('click', async () => {
         const type = reportTypeSelect.value;
         const file = fileInput.files[0];
         if (!type || !file) return;
 
-        // Show attachment bubble in chat
         const messagesContainer = document.getElementById('chatMessages');
+
+        // ── Symptom Photo: send to vision model for analysis ──────────────────
+        if (type === 'SymptomPhoto') {
+            closeUploadPanel();
+            // Show image thumbnail in chat as a user message
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const dataUrl = e.target.result;
+                const base64  = dataUrl.split(',')[1]; // strip "data:image/...;base64,"
+
+                // Show thumbnail bubble
+                const thumbBubble = document.createElement('div');
+                thumbBubble.className = 'message user';
+                thumbBubble.innerHTML = `
+                    <div style="display:flex;flex-direction:column;gap:0.4rem;align-items:flex-end">
+                        <img src="${dataUrl}" alt="Symptom photo"
+                             style="max-width:200px;max-height:200px;border-radius:8px;border:1px solid #e5e7eb;">
+                        <span style="font-size:0.75rem;color:#9ca3af">📷 Analysing image…</span>
+                    </div>`;
+                messagesContainer.appendChild(thumbBubble);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                // Show typing indicator
+                const typingBubble = document.createElement('div');
+                typingBubble.className = 'message ai';
+                typingBubble.innerHTML = '<span style="color:#9ca3af">🤖 Analysing your photo…</span>';
+                messagesContainer.appendChild(typingBubble);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                try {
+                    const resp = await fetch('/api/analyze-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64, context: 'Patient submitted a symptom photo during appointment booking.' })
+                    });
+                    const data = await resp.json();
+
+                    if (data.error) {
+                        typingBubble.innerHTML = `⚠️ Image analysis unavailable: ${data.hint || data.error}`;
+                        return;
+                    }
+
+                    const description = data.description;
+
+                    // Replace typing indicator with AI response
+                    typingBubble.innerHTML = `<strong>📷 Image analysis:</strong><br>${description.replace(/\n/g, '<br>')}`;
+
+                    // Update the thumbnail caption
+                    thumbBubble.querySelector('span').textContent = '📷 Symptom photo attached';
+
+                    // Feed description into the conversation as a user message
+                    // so the LLM and differential can use it
+                    if (appointmentSystem) {
+                        const summaryMsg = `[Patient uploaded a symptom photo. Visual observation: ${description}]`;
+                        appointmentSystem.llmInterface.conversationHistory.push({
+                            role: 'user', content: summaryMsg
+                        });
+                        // If symptoms not yet captured, use image description as seed
+                        const pd = appointmentSystem.llmInterface.patientData;
+                        if (!pd.symptoms) {
+                            pd.symptoms = description.split('.')[0].trim();
+                            console.log('📷 Symptoms seeded from image:', pd.symptoms);
+                        }
+
+                        // Immediately update differential using the image description
+                        // so the text model starts reasoning without waiting for next message
+                        if (pd.hasBasicInfo()) {
+                            try {
+                                const convText = appointmentSystem.llmInterface.getConversationSummary();
+                                const diffRes = await fetch('/api/update-differential', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        conversationText: convText,
+                                        symptoms: pd.symptoms,
+                                        gender: pd.gender,
+                                        currentDifferential: pd.differential
+                                    })
+                                });
+                                const diffData = await diffRes.json();
+                                if (diffData.differential && diffData.differential.length) {
+                                    pd.differential = diffData.differential;
+                                    console.log('🧬 Differential updated from image:', diffData.differential.map(d =>
+                                        `${d.condition}(p=${d.probability}, for=${(d.evidence_for||[]).length}, against=${(d.evidence_against||[]).length})`
+                                    ).join(' | '));
+                                    // Show a follow-up question from the new differential
+                                    const nextQ = diffData.differential
+                                        .map(d => d.discriminating_question)
+                                        .find(q => q && !pd.askedQuestions.includes(q));
+                                    if (nextQ) {
+                                        const qBubble = document.createElement('div');
+                                        qBubble.className = 'message ai';
+                                        qBubble.textContent = nextQ;
+                                        messagesContainer.appendChild(qBubble);
+                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                        appointmentSystem.llmInterface.conversationHistory.push({
+                                            role: 'assistant', content: nextQ
+                                        });
+                                        pd.askedQuestions.push(nextQ);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('⚠️ Post-image differential update failed:', e.message);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    typingBubble.innerHTML = `⚠️ Could not analyse image: ${err.message}`;
+                }
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+
+        // ── Other document types: just show attachment bubble ─────────────────
         const bubble = document.createElement('div');
         bubble.className = 'message attachment';
         bubble.innerHTML = `

@@ -455,5 +455,724 @@
     "appointmentTime": "08:00",
     "status": "pending",
     "createdAt": "2026-05-14T11:05:06.475Z"
+  },
+  {
+    "id": "1778841989633",
+    "doctorId": "GP003",
+    "doctorName": "Dr. Emily Davis",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "6601066054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-15",
+    "appointmentTime": "16:30",
+    "status": "pending",
+    "createdAt": "2026-05-15T10:46:29.633Z"
+  },
+  {
+    "id": "1778842337358",
+    "doctorId": "GP003",
+    "doctorName": "Dr. Emily Davis",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "3905735734",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-16",
+    "appointmentTime": "10:00",
+    "status": "pending",
+    "createdAt": "2026-05-15T10:52:17.358Z"
+  },
+  {
+    "id": "1778842729068",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-16",
+    "appointmentTime": "08:00",
+    "status": "pending",
+    "createdAt": "2026-05-15T10:58:49.068Z"
+  },
+  {
+    "id": "1778843057022",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "20359345340",
+      "issues": "stomach upset, vomiting, and loose motion",
+      "diagnosis": "Possible gastroenteritis"
+    },
+    "appointmentDate": "2026-05-16",
+    "appointmentTime": "08:15",
+    "status": "pending",
+    "createdAt": "2026-05-15T11:04:17.022Z"
+  },
+  {
+    "id": "1778843377226",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "990166054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-16",
+    "appointmentTime": "08:30",
+    "status": "pending",
+    "createdAt": "2026-05-15T11:09:37.226Z"
+  },
+  {
+    "id": "1778843695749",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "230954730457",
+      "issues": "cold, cough and stomach pain",
+      "diagnosis": "Possible acute gastritis"
+    },
+    "appointmentDate": "2026-05-16",
+    "appointmentTime": "08:45",
+    "status": "pending",
+    "createdAt": "2026-05-15T11:14:55.749Z"
+  },
+  {
+    "id": "1778918271544",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "9901066054",
+      "issues": "null",
+      "diagnosis": "Assessment pending"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "08:00",
+    "status": "pending",
+    "createdAt": "2026-05-16T07:57:51.544Z"
+  },
+  {
+    "id": "1778918901886",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 31,
+      "gender": "Male",
+      "contact": "2394572523",
+      "issues": "severe rashes on legs",
+      "diagnosis": "Contact Dermatitis"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "08:15",
+    "status": "pending",
+    "createdAt": "2026-05-16T08:08:21.886Z"
+  },
+  {
+    "id": "1778939997327",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "20-57-237520",
+      "issues": "null",
+      "diagnosis": "Acute Gastroenteritis"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "08:30",
+    "status": "pending",
+    "createdAt": "2026-05-16T13:59:57.327Z"
+  },
+  {
+    "id": "1778942681287",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "2357809752375",
+      "issues": "Loose motion (watery yellow) 6 times since past 6 hours, not feeling like eating.",
+      "diagnosis": "Food Poisoning"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "08:45",
+    "status": "pending",
+    "createdAt": "2026-05-16T14:44:41.287Z"
+  },
+  {
+    "id": "1778945182477",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "12793401745",
+      "issues": "Please describe your symptoms",
+      "diagnosis": "Acute Gastroenteritis"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "09:00",
+    "status": "pending",
+    "createdAt": "2026-05-16T15:26:22.477Z"
+  },
+  {
+    "id": "1779008432085",
+    "doctorId": "GP003",
+    "doctorName": "Dr. Emily Davis",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "209579457235",
+      "issues": "Stomach upset, loose motion (watery yellow color), 6 times since last 4 hours. Slight fever, chills.",
+      "diagnosis": "Acute Gastroenteritis"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "14:45",
+    "status": "pending",
+    "createdAt": "2026-05-17T09:00:32.085Z"
+  },
+  {
+    "id": "1779009230370",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "1234134143",
+      "issues": "Itchy red patches on the inside of elbows, Dry, flaky skin, Worse after hot shower",
+      "diagnosis": "Assessment pending",
+      "symptomsSummary": "Itchy red patches on the inside of elbows, Dry, flaky skin, Worse after hot shower. I am not sure"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "14:45",
+    "status": "confirmed",
+    "createdAt": "2026-05-17T09:13:50.370Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Consider topical corticosteroids.",
+        "Moisturize affected areas frequently.",
+        "Avoid hot showers"
+      ],
+      "labTests": [],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-05-17T09:14:27.874Z"
+  },
+  {
+    "id": "1779009637827",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Govinda",
+      "age": 34,
+      "gender": "Male",
+      "contact": "394852985472",
+      "issues": "Pain started near belly button then moved to right lower abdomen Fever Nausea Loss of appetite Pain while walking",
+      "diagnosis": "Acute appendicitis",
+      "symptomsSummary": "Pain started near belly button then moved to right lower abdomen Fever Nausea Loss of appetite Pain while walking. Constant, sometimes high. Fairly constant, and is worsening over time. Food has no bearing. Fairly constant, and is worsening over time. Food has no bearing"
+    },
+    "appointmentDate": "2026-05-17",
+    "appointmentTime": "15:00",
+    "status": "pending",
+    "createdAt": "2026-05-17T09:20:37.827Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Plain radiography (abdominal x-ray)",
+        "Complete blood count with differential",
+        "Serum inflammatory markers (CRP)"
+      ],
+      "labTests": [
+        "Urinalysis",
+        "Fecal occult blood test"
+      ],
+      "urgency": "routine"
+    }
+  },
+  {
+    "id": "1779022731390",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "3459234539485",
+      "issues": "Vomiting, Loose stools, Fever, Stomach cramps, Ate outside food yesterday.",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "Vomiting, Loose stools, Fever, Stomach cramps, Ate outside food yesterday.. No, all started after having food outside.. I am not sure.. No relief. Feels like vomiting after food.. Mostly after eating."
+    },
+    "appointmentDate": "2026-05-18",
+    "appointmentTime": "08:00",
+    "status": "confirmed",
+    "createdAt": "2026-05-17T12:58:51.390Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Oral rehydration solution (ORS)",
+        "Anti-diarrheal medication for symptom relief",
+        "Hydration with fluids"
+      ],
+      "labTests": [
+        "Complete blood count (CBC)",
+        "Stool culture and sensitivity",
+        "Electrolyte panel"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-05-17T13:00:31.752Z"
+  },
+  {
+    "id": "1779023153280",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "81571985371",
+      "issues": "Bloating after eating wheat, Chronic diarrhea, Weight loss, Fatigue, Iron deficiency history",
+      "diagnosis": "Celiac Disease",
+      "symptomsSummary": "Bloating after eating wheat, Chronic diarrhea, Weight loss, Fatigue, Iron deficiency history. Yes, containing wheat. Yes, generally feels bloated, brain fog etc.... Yes, diarrhea after eating gluten.. Yes."
+    },
+    "appointmentDate": "2026-05-18",
+    "appointmentTime": "08:15",
+    "status": "confirmed",
+    "createdAt": "2026-05-17T13:05:53.280Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Gluten-free diet",
+        "Lifestyle modifications",
+        "Iron supplementation"
+      ],
+      "labTests": [
+        "Endoscopic evaluation",
+        "Serum iron",
+        "Ferritin"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-05-17T13:06:35.214Z",
+    "notes": {
+      "chiefComplaint": "Bloating after eating wheat, Chronic diarrhea, Weight loss, Fatigue, Iron deficiency history",
+      "examination": "",
+      "diagnosis": "Celiac Disease",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-05-17T13:06:35.211Z"
+    }
+  },
+  {
+    "id": "1779095592536",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Harsha",
+      "age": 25,
+      "gender": "Male",
+      "contact": "7190571-5711-340",
+      "issues": "Severe pain after fatty meals Pain in right upper abdomen Pain radiating to shoulder Vomiting Mild fever",
+      "diagnosis": "Assessment pending",
+      "symptomsSummary": "Severe pain after fatty meals Pain in right upper abdomen Pain radiating to shoulder Vomiting Mild fever. No, not really.. No, I have steady pain.. No, i do not have"
+    },
+    "appointmentDate": "2026-05-18",
+    "appointmentTime": "14:45",
+    "status": "pending",
+    "createdAt": "2026-05-18T09:13:12.537Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Lifestyle modifications: Dietary adjustments.",
+        "Pain management: NSAIDs as needed.",
+        "Monitor symptoms: Repeat if pain persists."
+      ],
+      "labTests": [
+        "Complete Blood Count (CBC)",
+        "Liver function tests (LFTs)",
+        "Stool analysis (for possible gastrointestinal issues)"
+      ],
+      "urgency": "routine"
+    },
+    "notes": {
+      "chiefComplaint": "Severe pain after fatty meals Pain in right upper abdomen Pain radiating to shoulder Vomiting Mild fever",
+      "examination": "",
+      "diagnosis": "Assessment pending",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-05-18T09:21:03.607Z"
+    },
+    "updatedAt": "2026-05-18T09:21:03.607Z"
+  },
+  {
+    "id": "1779096485487",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Raghu",
+      "age": 34,
+      "gender": "Male",
+      "contact": "2198470947",
+      "issues": "high fever, Weakness and fatigue Headache Abdominal pain or discomfort Loss of appetite. Also, feels nauseated...",
+      "diagnosis": "Biliary/Gallbladder Disease",
+      "symptomsSummary": "high fever, Weakness and fatigue Headache Abdominal pain or discomfort Loss of appetite. Also, feels nauseated...\nDo you have a history of gallstones or any known family history of gallbladder issues? → No.\nDo you experience any pain in the upper right abdomen? → Not really.\nDo you experience any heartburn or a burning sensation in your chest? → No, I have tiredness, not feeling good about anything. High fever, no taste."
+    },
+    "appointmentDate": "2026-05-18",
+    "appointmentTime": "15:00",
+    "status": "pending",
+    "createdAt": "2026-05-18T09:28:05.487Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Symptomatic relief with antipyretics"
+      ],
+      "labTests": [
+        "Complete blood count (CBC)",
+        "Liver function tests (LFTs) ",
+        "Blood sugar",
+        "Urinalysis"
+      ],
+      "urgency": "routine"
+    }
+  },
+  {
+    "id": "1779097029654",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Shantash",
+      "age": 39,
+      "gender": "Male",
+      "contact": "934857239",
+      "issues": "Persistent fever, Fatigue, Headache, Loss of appetite, General abdominal discomfort, Constipation or diarrhea",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "Persistent fever, Fatigue, Headache, Loss of appetite, General abdominal discomfort, Constipation or diarrhea\nHas this been accompanied by vomiting? → Yes. Tiredness and not feelign like eating anything\nHave you travelled to any malarial endemic area recently? → No.\nHave you had any other symptoms such as nausea or vomiting? → Yes, but I did not eat anythig outsise. Stayed at home\nHow long have you had these symptoms? → For more than 4 days. Especially, the fever. It is there since last 5 days."
+    },
+    "appointmentDate": "2026-05-18",
+    "appointmentTime": "15:15",
+    "status": "confirmed",
+    "createdAt": "2026-05-18T09:37:09.655Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Oral Rehydration Therapy (ORT)",
+        "Fluids, especially water.",
+        "Dietary modifications: Bland foods"
+      ],
+      "labTests": [
+        "Complete Blood Count (CBC)",
+        "Electrolytes",
+        "Stool Culture and Microscopy"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-05-18T09:39:04.178Z",
+    "notes": {
+      "chiefComplaint": "Persistent fever, Fatigue, Headache, Loss of appetite, General abdominal discomfort, Constipation or diarrhea",
+      "examination": "Looks more like typhoid.",
+      "diagnosis": "Acute Gastroenteritis is right. Typhoid is more probable.",
+      "prescription": "Typhoid blood test.",
+      "followUp": "",
+      "addedAt": "2026-05-18T09:39:04.178Z"
+    }
+  },
+  {
+    "id": "1779266634097",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "2931857375",
+      "issues": "High fever (104 degree), no appetite, tiredness since last one week, extremely tired with high fever.",
+      "diagnosis": "Typhoid fever",
+      "symptomsSummary": "High fever (104 degree), no appetite, tiredness since last one week, extremely tired with high fever.\nHave you traveled to any endemic areas in the past month? → No, I am staying in my hometown.\nHave you noticed any other symptoms such as constipation, diarrhoea (if yes, is it bloody), abdominal bloating or pain? → Yes, I do have constipation. May be due to high fever. No other stomach issue other than constipation and loss of taste\nHave you been experiencing any other symptoms such as headache, rose spots on the body, or constipation? → I feel heavy in the head and constipation but no rose spots"
+    },
+    "appointmentDate": "2026-05-20",
+    "appointmentTime": "14:15",
+    "status": "pending",
+    "createdAt": "2026-05-20T08:43:54.097Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Supportive care, including hydration and fever reduction.",
+        "Antibiotics for typhoid fever"
+      ],
+      "labTests": [
+        "Blood culture",
+        "Widal test",
+        "Urinalysis"
+      ],
+      "urgency": "routine"
+    },
+    "notes": {
+      "chiefComplaint": "High fever (104 degree), no appetite, tiredness since last one week, extremely tired with high fever.",
+      "examination": "",
+      "diagnosis": "Typhoid fever",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-05-20T08:45:48.479Z"
+    },
+    "updatedAt": "2026-05-20T08:45:48.481Z"
+  },
+  {
+    "id": "1779267569344",
+    "doctorId": "DR001",
+    "doctorName": "Dr. Priya Sharma",
+    "patient": {
+      "name": "Raja",
+      "age": 32,
+      "gender": "Male",
+      "contact": "2330572305",
+      "issues": "Rashes on my arms and leg. Red rashes. Sometimes itchy",
+      "diagnosis": "Contact Dermatitis",
+      "symptomsSummary": "Rashes on my arms and leg. Red rashes. Sometimes itchy\nHave you noticed any other specific symptoms besides the rashes and itchiness? → Its been there since last 4 days. Its become worse as the days progress\nCould you describe any recent exposures to potential irritants like soap, laundry detergent, or new clothing? → No exposure like it.\nDo you have any history of eczema or similar skin conditions? → No, I am not sure.\nAre the rashes raised, scaly, or crusted? → raised"
+    },
+    "appointmentDate": "2026-05-20",
+    "appointmentTime": "15:00",
+    "status": "confirmed",
+    "createdAt": "2026-05-20T08:59:29.344Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Apply a cool, damp compress.",
+        "Moisturize regularly with fragrance-free lotion.",
+        "Avoid scratching to prevent infection."
+      ],
+      "labTests": [],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-05-20T09:00:21.203Z",
+    "notes": {
+      "chiefComplaint": "Rashes on my arms and leg. Red rashes. Sometimes itchy",
+      "examination": "",
+      "diagnosis": "Contact Dermatitis",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-05-20T09:00:21.201Z"
+    }
+  },
+  {
+    "id": "1780728330522",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharatyh",
+      "age": 32,
+      "gender": "Male",
+      "contact": "392857257",
+      "issues": "Severe ear pain, dripping watery substance from the ear.",
+      "diagnosis": "Acute otitis media",
+      "symptomsSummary": "Severe ear pain, dripping watery substance from the ear.\nDo you have a recent history of ear infections? → not really, this is the first time\nHave you experienced any drainage or discharge from your ears before? → No, it is happening since 2 days\nDo you have any difficulty hearing or fullness in your ears? → Yes, slight difficulty in hearing. Also, feeling fullness"
+    },
+    "appointmentDate": "2026-06-06",
+    "appointmentTime": "12:30",
+    "status": "confirmed",
+    "createdAt": "2026-06-06T06:45:30.522Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Prescribe pain relief medications.",
+        "Consider otoscopic examination.",
+        "Refer to an ENT specialist."
+      ],
+      "labTests": [
+        "Tympanometry",
+        "Otomicroscopy"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-06-06T06:46:58.177Z",
+    "notes": {
+      "chiefComplaint": "Severe ear pain, dripping watery substance from the ear.",
+      "examination": "",
+      "diagnosis": "Acute otitis media",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-06-06T06:46:58.175Z"
+    }
+  },
+  {
+    "id": "1780991266583",
+    "doctorId": "DR002",
+    "doctorName": "Dr. Arun Nair",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "2903302572",
+      "issues": "Irritation in the finger skin. Scales coming out.",
+      "diagnosis": "Contact Dermatitis",
+      "symptomsSummary": "Irritation in the finger skin. Scales coming out.\nHow long has this been happening and has it gotten worse since the beginning? → Two weeks. Gets worse when stomach is bloated (gas).\nHas the irritation occurred after exposure to any known allergens like plants, insects, or substances? → No.\nHave you noticed any rashes or itching on your body besides the fingers? → No, only fingers. That too on certain fingers; mostly hands and one on the toe"
+    },
+    "appointmentDate": "2026-06-09",
+    "appointmentTime": "13:30",
+    "status": "pending",
+    "createdAt": "2026-06-09T07:47:46.583Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Topical corticosteroid cream",
+        "Antihistamine ointment",
+        "Frequent handwashing"
+      ],
+      "labTests": [],
+      "urgency": "routine"
+    }
+  },
+  {
+    "id": "1780991764453",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Govinda",
+      "age": 24,
+      "gender": "Male",
+      "contact": "2039750357",
+      "issues": "Stomach ache, feeling vomiting.",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "Stomach ache, feeling vomiting.\nHave you experienced any recent changes in your dietary habits? → Yes, ate outside. Got the symptom immediately after that.\nWhen did you start feeling these symptoms? → Since 24 hours\nAre you experiencing diarrhea or fever? → Diarrhea yes but no fever"
+    },
+    "appointmentDate": "2026-06-09",
+    "appointmentTime": "13:30",
+    "status": "pending",
+    "createdAt": "2026-06-09T07:56:04.453Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Oral rehydration solution",
+        "BRAT diet",
+        "Ensure nutritional support"
+      ],
+      "labTests": [
+        "Complete blood count",
+        "Stool culture",
+        "Electrolytes panel"
+      ],
+      "urgency": "routine"
+    }
+  },
+  {
+    "id": "1780992719895",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bala",
+      "age": 31,
+      "gender": "Male",
+      "contact": "38457290752",
+      "issues": "Loose stool, stomach ache before going to stool. No fever.",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "Loose stool, stomach ache before going to stool. No fever.\nHave you experienced any change in your diet or have you consumed any food that may be a potential trigger? → Yes, ate outside. Seems unhygenic\nDo you experience any burning sensation in your chest or throat after meals? → Burning in stomach--a little bit.\nHow long have you been experiencing this stomach ache? → last 24 hours\nDo you experience heartburn, acid taste or regurgitation after meals? → Not so much but a little hearburn"
+    },
+    "appointmentDate": "2026-06-09",
+    "appointmentTime": "16:45",
+    "status": "pending",
+    "createdAt": "2026-06-09T08:11:59.895Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Oral rehydration solution",
+        "Anti-diarrheal medication",
+        "Bland diet"
+      ],
+      "labTests": [
+        "Complete blood count",
+        "Stool analysis",
+        "Electrolytes",
+        "Blood glucose"
+      ],
+      "urgency": "routine"
+    }
+  },
+  {
+    "id": "1780995036976",
+    "doctorId": "CD001",
+    "doctorName": "Dr. Robert Martinez",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "2357293751",
+      "issues": "Irregular heart beat, sharp chest pain, shortness of breathe.",
+      "diagnosis": "Acute Coronary Syndrome",
+      "symptomsSummary": "Irregular heart beat, sharp chest pain, shortness of breathe.\nCould you tell me about the duration of these symptoms, when they started, and how severe the pain is? → Just a few hours back. I also have high BP. The pain is quite severe\nDoes the pain radiate to your left arm or jaw? → Yes\nDoes it feel like pressure, tightness, or a burning sensation? → Tightness"
+    },
+    "appointmentDate": "2026-06-10",
+    "appointmentTime": "09:00",
+    "status": "pending",
+    "createdAt": "2026-06-09T08:50:36.978Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Aspirin, Nitroglycerin sublingual if pain persists",
+        "Beta blocker for chest pain control",
+        "Monitor BP and heart rhythm"
+      ],
+      "labTests": [
+        "Electrocardiogram (ECG)",
+        "Blood test for troponin"
+      ],
+      "urgency": "urgent"
+    }
+  },
+  {
+    "id": "1780995879070",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "Bharath",
+      "age": 42,
+      "gender": "Male",
+      "contact": "30945720357",
+      "issues": "Shortness of breathe, sharp pain in the chest, irregular heart beat. Also, have high BP",
+      "diagnosis": "Acute Coronary Syndrome",
+      "symptomsSummary": "Shortness of breathe, sharp pain in the chest, irregular heart beat. Also, have high BP\nOkay, when did the shortness of breath start? → last one hour\nHas this shortness of breath been present for a longer duration, say over 48 hours? → No, just one hour back"
+    },
+    "appointmentDate": "2026-06-10",
+    "appointmentTime": "12:30",
+    "status": "pending",
+    "createdAt": "2026-06-09T09:04:39.071Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Aspirin and statin therapy for suspected ACS.",
+        "Nitroglycerin as per doctor's discretion for chest pain.",
+        "Lifestyle modifications with regular exercise and diet."
+      ],
+      "labTests": [
+        "Troponin cardiac enzyme",
+        "Electrocardiogram (ECG)",
+        "Blood pressure monitoring",
+        "Chest X-ray"
+      ],
+      "urgency": "urgent"
+    },
+    "notes": {
+      "chiefComplaint": "Shortness of breathe, sharp pain in the chest, irregular heart beat. Also, have high BP",
+      "examination": "",
+      "diagnosis": "Acute Coronary Syndrome",
+      "prescription": "",
+      "followUp": "",
+      "addedAt": "2026-06-09T09:07:23.310Z"
+    },
+    "updatedAt": "2026-06-09T09:07:23.312Z"
   }
 ]
