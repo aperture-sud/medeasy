@@ -1314,11 +1314,73 @@ app.get('/api/email-status', (req, res) => {
     res.json(status);
 });
 
+// Deterministic keyword-based specialty matcher — runs before any LLM call.
+// Returns the matched specialization string (from availableSpecializations) or null.
+function keywordMatchSpecialty(issues, availableSpecializations) {
+    const text = (issues || '').toLowerCase();
+    const avail = availableSpecializations || [];
+    const find = name => avail.find(s => s.toLowerCase().includes(name.toLowerCase())) || null;
+
+    // Order matters: more specific rules first
+    const rules = [
+        { keys: ['heart attack', 'myocardial', 'angina', 'arrhythmia', 'atrial fibrillation', 'ecg', 'cardiac arrest',
+                 'coronary', 'cardiologist', 'cardiovascular', 'heart palpitation', 'heart racing',
+                 'chest pain', 'chest pressure', 'chest tightness', 'radiating to arm', 'left arm pain'],
+          spec: 'Cardiologist' },
+        { keys: ['rash', 'acne', 'eczema', 'psoriasis', 'dermatitis', 'hives', 'urticaria', 'skin lesion',
+                 'skin infection', 'pigmentation', 'dermatologist', 'itchy skin', 'itching skin',
+                 'skin redness', 'skin peeling', 'skin patch', 'nail problem', 'hair fall', 'hair loss'],
+          spec: 'Dermatologist' },
+        { keys: ['eye pain', 'eye infection', 'vision loss', 'blurred vision', 'double vision', 'cataract',
+                 'glaucoma', 'retina', 'ophthalmologist', 'eye redness', 'eye discharge', 'eyelid',
+                 'floaters', 'flashes of light', 'eye pressure'],
+          spec: 'Ophthalmologist' },
+        { keys: ['urine', 'urinary', 'kidney stone', 'bladder', 'prostate', 'urologist', 'uti',
+                 'burning urination', 'blood in urine', 'frequent urination', 'urinary incontinence'],
+          spec: 'Urologist' },
+        { keys: ['period', 'menstrual', 'menstruation', 'pregnancy', 'pregnant', 'ovarian', 'ovary',
+                 'gynaecologist', 'gynecologist', 'pelvic pain', 'vaginal', 'reproductive', 'pcod', 'pcos',
+                 'endometriosis', 'missed period', 'irregular periods', 'heavy bleeding'],
+          spec: 'Gynaecologist' },
+    ];
+
+    for (const rule of rules) {
+        if (rule.keys.some(k => text.includes(k))) {
+            const match = find(rule.spec);
+            if (match) return match;
+        }
+    }
+    return null;
+}
+
 // In server.js - Replace the /api/match-specialization endpoint with this enhanced version:
 
 app.post('/api/match-specialization', async (req, res) => {
     try {
         const { patientIssues, availableSpecializations, knowledgeBaseString, preferredTime } = req.body;
+
+        // ── Keyword fast-path (deterministic, runs before any LLM) ──────────────
+        const keywordSpec = keywordMatchSpecialty(patientIssues, availableSpecializations);
+        if (keywordSpec) {
+            console.log('⚡ Keyword specialty match:', keywordSpec);
+            // Still need a doctor + slot — find the best rated in this specialty
+            const doctors = await knowledgeBaseReader.readKnowledgeBase();
+            const appts   = await readAppointments();
+            const specDocs = doctors.filter(d => (d.specialization || '').toLowerCase().includes(keywordSpec.toLowerCase()));
+            specDocs.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            const best = specDocs[0];
+            let slot = best ? await computeNextAvailableSlot(best, appts, 15, preferredTime || null) : null;
+            return res.json({
+                specialization: keywordSpec,
+                doctorName: best ? (best.name || best.doctorName) : null,
+                confidence: 0.92,
+                reason: `Keyword match: symptoms clearly indicate ${keywordSpec}`,
+                appointmentDate: slot ? slot.appointmentDate : null,
+                appointmentTime: slot ? slot.appointmentTime : null,
+                method: 'keyword',
+                timestamp: new Date().toISOString()
+            });
+        }
 
         // ── BART-MNLI pipeline ────────────────────────────────────────────────
         if (ACTIVE_CLASSIFIER === 'bart') {

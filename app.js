@@ -2411,25 +2411,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show a compact inline form instead of the full conversation
         const msgs = document.getElementById('chatMessages');
+        // Fetch doctor list to populate dropdown
+        let allDoctors = [];
+        try {
+            const dr = await fetch(`${window.location.origin}/api/doctors/available`);
+            const dd = await dr.json();
+            allDoctors = dd.doctors || [];
+        } catch (_) {}
+
+        const doctorOptions = allDoctors.length
+            ? allDoctors.map(d => `<option value="${d.name}">${d.name} — ${d.specialization}</option>`).join('')
+            : '<option value="">No doctors available</option>';
+
+        const inp = s => `padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit; ${s||''}`;
+
         msgs.innerHTML = `
-            <div class="message ai">Hi! Just need a few quick details to book your appointment.</div>
+            <div class="message ai">Hi! Just a few quick details to book your appointment.</div>
             <div class="message ai" style="padding:0; background:none; box-shadow:none;">
-                <div id="directBookForm" style="background:#fff; border:1px solid #dde; border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; max-width:360px;">
-                    <input id="db_name"    placeholder="Full name"         style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                <div id="directBookForm" style="background:#fff; border:1px solid #dde; border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; max-width:380px;">
+                    <input id="db_name"    placeholder="Full name"    style="${inp()}">
                     <div style="display:flex; gap:8px;">
-                        <input id="db_age"  placeholder="Age"  type="number" style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit; width:70px;">
-                        <select id="db_gender" style="flex:1; padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                        <input id="db_age" placeholder="Age" type="number" style="${inp('width:70px;')}">
+                        <select id="db_gender" style="${inp('flex:1;')}">
                             <option value="">Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    <input id="db_contact" placeholder="Phone number"     style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
-                    <input id="db_symptoms" placeholder="Reason for visit (optional)" style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
-                    <button id="db_submit" style="background:linear-gradient(135deg,#4facfe,#00f2fe); color:#fff; border:none; padding:10px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;">Find doctors →</button>
+                    <input id="db_contact"  placeholder="Phone number"  style="${inp()}">
+                    <input id="db_symptoms" placeholder="Reason for visit (optional)" style="${inp()}">
+                    <div style="position:relative;">
+                        <input id="db_doctor_input" placeholder="Preferred doctor (optional — type to search)" autocomplete="off"
+                               style="${inp('width:100%; box-sizing:border-box;')}">
+                        <select id="db_doctor_select" size="5"
+                                style="position:absolute; top:100%; left:0; width:100%; z-index:99; background:#fff;
+                                       border:1px solid #4facfe; border-radius:0 0 8px 8px; display:none;
+                                       font-size:13px; font-family:inherit; overflow-y:auto; max-height:160px;">
+                            ${doctorOptions}
+                        </select>
+                    </div>
+                    <button id="db_submit" style="background:linear-gradient(135deg,#4facfe,#00f2fe); color:#fff; border:none; padding:10px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;">Find doctors</button>
                 </div>
             </div>`;
+
+        // Doctor search: filter dropdown as user types, select on click
+        const dbInput  = document.getElementById('db_doctor_input');
+        const dbSelect = document.getElementById('db_doctor_select');
+        dbInput.addEventListener('input', () => {
+            const q = dbInput.value.toLowerCase();
+            Array.from(dbSelect.options).forEach(o => {
+                o.style.display = (!q || o.text.toLowerCase().includes(q)) ? '' : 'none';
+            });
+            dbSelect.style.display = q ? 'block' : 'none';
+        });
+        dbSelect.addEventListener('change', () => {
+            dbInput.value = dbSelect.value;
+            dbSelect.style.display = 'none';
+        });
+        document.addEventListener('click', e => {
+            if (!dbInput.contains(e.target) && !dbSelect.contains(e.target))
+                dbSelect.style.display = 'none';
+        }, { once: false });
 
         document.getElementById('db_submit').addEventListener('click', async () => {
             const name    = document.getElementById('db_name').value.trim();
@@ -2437,6 +2480,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const gender  = document.getElementById('db_gender').value;
             const contact = document.getElementById('db_contact').value.trim();
             const symptoms= document.getElementById('db_symptoms').value.trim() || 'General consultation';
+            const preferredDoctor = document.getElementById('db_doctor_input').value.trim();
 
             if (!name || !age || !gender || !contact) {
                 alert('Please fill in name, age, gender and phone number.');
@@ -2446,10 +2490,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const pd = appointmentSystem.llmInterface.patientData;
             pd.name = name; pd.age = age; pd.gender = gender;
             pd.contact = contact; pd.symptoms = symptoms;
+            if (preferredDoctor) pd.preferredDoctor = preferredDoctor;
             pd.detailedAssessmentDone = true;
 
             document.getElementById('directBookForm').remove();
-            appointmentSystem.addMessage('ai', `Got it, ${name}. Let me find the right doctors for you.`);
+            appointmentSystem.addMessage('ai', `Got it, ${name}. Finding the right doctors for you.`);
             await appointmentSystem.showPreferredDoctorSelection();
         });
     });
