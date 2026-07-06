@@ -1162,9 +1162,22 @@ class EnhancedAppointmentCreator {
         const msgLower = message.toLowerCase();
         const existingLower = currentSymptoms.toLowerCase();
 
+        // Return true if the keyword at position `idx` in `text` is preceded by a negation
+        const NEGATIONS = ['not', "don't", "dont", "doesn't", "doesnt", "didn't", "didnt",
+                           'never', 'no', 'without', "can't", "cant", 'cannot', "isn't", "isnt",
+                           "aren't", "arent", "won't", "wont", "i'm not", "im not"];
+        const isNegated = (text, idx) => {
+            const before = text.slice(Math.max(0, idx - 60), idx);
+            const words = before.trim().split(/\s+/).slice(-6);
+            return NEGATIONS.some(n => words.join(' ').endsWith(n) || words.includes(n));
+        };
+
         const newCritical = [];
         for (const cat of ESCALATION_CATEGORIES) {
-            const inMessage  = cat.terms.some(t => msgLower.includes(t));
+            const inMessage = cat.terms.some(t => {
+                const idx = msgLower.indexOf(t);
+                return idx !== -1 && !isNegated(msgLower, idx);
+            });
             const alreadyKnown = cat.terms.some(t => existingLower.includes(t));
             if (inMessage && !alreadyKnown) newCritical.push(cat.label);
         }
@@ -1771,7 +1784,7 @@ class EnhancedAppointmentCreator {
                    gender: data.gender,
                    contact: data.contact || null,
                    email: data.email || null,
-                   issues: this._buildSymptomSummary(data.symptomsSummary || data.symptoms || ''),
+                   issues: await this._buildSymptomSummary(this.llmInterface.getConversationSummary(), data.symptoms || ''),
                    diagnosis: data.diagnosis || this._extractLatestDiagnosis() || "Under assessment",
                    symptomsSummary: data.symptomsSummary || ''
                   },
@@ -2066,26 +2079,19 @@ class EnhancedAppointmentCreator {
         };
     }
 
-    // Build a readable symptom summary from the full Q&A log (symptomsSummary format:
-    // "chief complaint\nQuestion? → Answer\nQuestion? → Answer\n...")
-    _buildSymptomSummary(raw) {
-        if (!raw) return 'Not captured';
-        const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-        if (!lines.length) return 'Not captured';
-
-        const chief = lines[0];
-        const details = lines.slice(1).map(l => {
-            // Lines are either "Question? → Answer" or plain follow-up answers
-            const arrowIdx = l.indexOf('→');
-            if (arrowIdx !== -1) {
-                const answer = l.slice(arrowIdx + 1).trim();
-                return answer;
-            }
-            return l;
-        }).filter(Boolean);
-
-        if (!details.length) return chief;
-        return `${chief}. ${details.join('. ')}.`.replace(/\.{2,}/g, '.').replace(/\.\s*\./g, '.');
+    // Call backend to extract a clean comma-separated symptom list from the conversation
+    async _buildSymptomSummary(conversationText, symptoms) {
+        try {
+            const res = await fetch(`${window.location.origin}/api/extract-symptoms`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conversationText, symptoms })
+            });
+            const data = await res.json();
+            return data.symptoms || symptoms || 'Not captured';
+        } catch (_) {
+            return symptoms || 'Not captured';
+        }
     }
 
     // Scan conversation history in reverse to find the chatbot's latest diagnosis statement

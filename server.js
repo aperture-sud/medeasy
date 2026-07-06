@@ -708,6 +708,45 @@ app.post('/api/medical-chat', async (req, res) => {
     }
 });
 
+// Extract a clean comma-separated symptom list from the conversation
+app.post('/api/extract-symptoms', async (req, res) => {
+    try {
+        const { conversationText, symptoms } = req.body;
+        const prompt = `From this medical conversation, extract a brief comma-separated list of the patient's actual symptoms.
+
+RULES:
+- Only include symptoms the patient confirmed they HAVE — exclude anything they explicitly denied or said they do NOT have
+- Use simple terms (e.g. "chest pain", "nausea", "headache", "burning sensation")
+- Maximum 8 items, each under 5 words
+- Return ONLY the comma-separated list, no other text
+
+Initial complaint: ${symptoms || ''}
+Conversation:
+${(conversationText || '').slice(0, 1500)}
+
+Comma-separated symptom list:`;
+
+        let list = '';
+        if (isGeminiAvailable()) {
+            try {
+                const m = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', generationConfig: { temperature: 0.1, maxOutputTokens: 80 } });
+                const r = await m.generateContent(prompt);
+                list = r.response.text().trim();
+            } catch (e) { if (e.message?.includes('429')) markGeminiQuotaExhausted(); }
+        }
+        if (!list && hfServiceAvailable) {
+            list = (await generateAIText(prompt, 80)).trim();
+        }
+        // Fallback: just return the initial symptoms cleaned up
+        if (!list) list = (symptoms || '').replace(/;/g, ',');
+        // Strip any trailing punctuation / stray quotes
+        list = list.replace(/^['"]+|['"]+$/g, '').replace(/\.$/, '').trim();
+        res.json({ symptoms: list });
+    } catch (e) {
+        res.json({ symptoms: req.body.symptoms || '' });
+    }
+});
+
 // New endpoint for patient information extraction
 app.post('/api/extract-patient-info', async (req, res) => {
     try {
