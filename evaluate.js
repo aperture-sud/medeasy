@@ -137,6 +137,11 @@ function bar(value, total, width = 20) {
     return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 
+function printRow(cols) {
+    const COL = [30, 22, 22, 10];
+    console.log('| ' + cols.map((c, i) => pad(c, COL[i] || 20)).join(' | ') + ' |');
+}
+
 async function main() {
     const testCases = require(TEST_FILE);
     console.log(`\n🏥 MedEasy Specialty Classification Evaluation`);
@@ -185,10 +190,6 @@ async function main() {
     // Print results table
     const COL = [45, 22, 22, 10];
     const SEP = '+' + COL.map(c => '-'.repeat(c + 2)).join('+') + '+';
-
-    function printRow(cols) {
-        console.log('| ' + cols.map((c, i) => pad(c, COL[i])).join(' | ') + ' |');
-    }
 
     console.log('\n' + SEP);
     printRow(['Symptoms (truncated)', 'Gemini', 'BART-MNLI', 'Correct?']);
@@ -239,8 +240,9 @@ async function main() {
         console.log();
     }
 
-    if (RUN_GEMINI) summarize('Gemini (LLM prompt)', geminiResults);
-    if (RUN_BART)   summarize('BART-MNLI (NLI classifier)', bartResults);
+    let geminiReport = null, bartReport = null;
+    if (RUN_GEMINI) { summarize('Gemini (LLM prompt)', geminiResults); geminiReport = classificationReport('Gemini', geminiResults); }
+    if (RUN_BART)   { summarize('BART-MNLI (NLI classifier)', bartResults); bartReport = classificationReport('BART-MNLI', bartResults); }
 
     if (RUN_GEMINI && RUN_BART && geminiResults.length && bartResults.length) {
         const gAcc = geminiResults.filter(r => r.correct).length / geminiResults.length;
@@ -249,6 +251,105 @@ async function main() {
         console.log(`  🏆 Better accuracy: ${winner}`);
         console.log(`     Gemini: ${(gAcc * 100).toFixed(1)}%  |  BART-MNLI: ${(bAcc * 100).toFixed(1)}%\n`);
     }
+
+    // Write a machine-readable report alongside the console output
+    const fs = require('fs');
+    const outPath = process.env.REPORT_FILE || './evaluation-report.json';
+    const report = {
+        generatedAt: new Date().toISOString(),
+        testCaseCount: testCases.length,
+        gemini: RUN_GEMINI ? { results: geminiResults, report: geminiReport } : null,
+        bart: RUN_BART ? { results: bartResults, report: bartReport } : null,
+    };
+    try {
+        fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
+        console.log(`  💾 Full report written to ${outPath}\n`);
+    } catch (e) {
+        console.warn(`  ⚠️  Could not write report file: ${e.message}\n`);
+    }
+}
+
+// ── Precision / Recall / F1 (macro + weighted), per class, from a confusion matrix ──
+function classificationReport(label, results) {
+    if (!results.length) return null;
+
+    const displayFor = {};
+    const norm = s => normalizeSpec(s);
+
+    const classes = new Set();
+    for (const r of results) {
+        classes.add(norm(r.correct));
+        displayFor[norm(r.correct)] = r.correct;
+        if (r.predicted && r.predicted !== 'error') {
+            classes.add(norm(r.predicted));
+            displayFor[norm(r.predicted)] = displayFor[norm(r.predicted)] || r.predicted;
+        }
+    }
+
+    const stats = {};
+    for (const c of classes) stats[c] = { tp: 0, fp: 0, fn: 0, support: 0 };
+
+    for (const r of results) {
+        const truth = norm(r.correct);
+        const pred  = r.predicted && r.predicted !== 'error' ? norm(r.predicted) : null;
+        stats[truth].support++;
+
+        if (pred === null) {
+            stats[truth].fn++;
+            continue;
+        }
+        if (specsMatch(r.predicted, r.correct)) {
+            stats[truth].tp++;
+        } else {
+            stats[truth].fn++;
+            if (!stats[pred]) stats[pred] = { tp: 0, fp: 0, fn: 0, support: 0 };
+            stats[pred].fp++;
+        }
+    }
+
+    const perClass = [];
+    let macroP = 0, macroR = 0, macroF1 = 0, weightedP = 0, weightedR = 0, weightedF1 = 0;
+    const totalSupport = results.length;
+    const classList = Object.keys(stats).sort();
+
+    for (const c of classList) {
+        const { tp, fp, fn, support } = stats[c];
+        const precision = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+        const recall    = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+        const f1        = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+        perClass.push({ class: displayFor[c] || c, precision, recall, f1, support, tp, fp, fn });
+        macroP += precision; macroR += recall; macroF1 += f1;
+        weightedP += precision * support; weightedR += recall * support; weightedF1 += f1 * support;
+    }
+    const n = classList.length || 1;
+
+    const report = {
+        label,
+        perClass,
+        macro: { precision: macroP / n, recall: macroR / n, f1: macroF1 / n },
+        weighted: {
+            precision: totalSupport ? weightedP / totalSupport : 0,
+            recall:    totalSupport ? weightedR / totalSupport : 0,
+            f1:        totalSupport ? weightedF1 / totalSupport : 0,
+        },
+        accuracy: results.filter(r => r.correct).length / results.length,
+    };
+
+    console.log(`  ${label} — Precision / Recall / F1 (per class)\n`);
+    printRow(['Specialty', 'Precision', 'Recall', 'F1']);
+    for (const row of perClass) {
+        printRow([
+            row.class,
+            `${(row.precision * 100).toFixed(1)}% (${row.tp}/${row.tp + row.fp})`,
+            `${(row.recall * 100).toFixed(1)}% (${row.tp}/${row.tp + row.fn})`,
+            `${(row.f1 * 100).toFixed(1)}%`,
+        ]);
+    }
+    console.log(`\n  Macro avg    -> P: ${(report.macro.precision * 100).toFixed(1)}%  R: ${(report.macro.recall * 100).toFixed(1)}%  F1: ${(report.macro.f1 * 100).toFixed(1)}%`);
+    console.log(`  Weighted avg -> P: ${(report.weighted.precision * 100).toFixed(1)}%  R: ${(report.weighted.recall * 100).toFixed(1)}%  F1: ${(report.weighted.f1 * 100).toFixed(1)}%`);
+    console.log(`  Accuracy     -> ${(report.accuracy * 100).toFixed(1)}%\n`);
+
+    return report;
 }
 
 main().catch(e => { console.error('Fatal:', e.message); process.exit(1); });

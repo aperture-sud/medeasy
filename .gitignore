@@ -4,3 +4,4 @@ embeddings.json
 doctors_backup_*.xlsx
 *.jsonl
 .DS_Store
+code.zip
