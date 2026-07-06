@@ -569,26 +569,27 @@ Return a JSON object with the extracted information.
             }
 
 
-        // Extract symptoms if not already present
+        // Extract symptoms if not already present — scan only user lines to avoid picking up AI questions
         if (!this.patientData.symptoms) {
             const medicalKeywords = [
                 'pain', 'hurt', 'ache', 'fever', 'headache', 'cough', 'cold',
                 'dizzy', 'nausea', 'sick', 'tired', 'sore', 'swollen', 'rash',
-                'burn', 'trouble', 'problem', 'difficulty', 'symptom', 'feel',
+                'burn', 'trouble', 'problem', 'difficulty', 'feel',
                 'stomach', 'chest', 'back', 'head', 'eye', 'ear', 'throat'
             ];
-            
-            const textLower = conversationText.toLowerCase();
-            if (medicalKeywords.some(keyword => textLower.includes(keyword))) {
-                // Look for sentences containing medical keywords
-                const sentences = conversationText.split(/[.!?]+/);
-                for (const sentence of sentences) {
-                    const sentenceLower = sentence.toLowerCase();
-                    if (medicalKeywords.some(keyword => sentenceLower.includes(keyword)) && sentence.trim().length > 10) {
-                        this.patientData.symptoms = sentence.trim();
-                        updates.symptoms = sentence.trim();
+            // Only look at user-spoken lines, never assistant lines
+            const userLines = conversationText.split('\n')
+                .filter(l => l.toLowerCase().startsWith('user:'))
+                .map(l => l.replace(/^user:\s*/i, '').trim());
+            for (const line of userLines) {
+                const lineLower = line.toLowerCase();
+                if (medicalKeywords.some(k => lineLower.includes(k)) && line.length > 10) {
+                    const validated = this.validateSymptoms(line);
+                    if (validated) {
+                        this.patientData.symptoms = validated;
+                        updates.symptoms = validated;
                         hasUpdates = true;
-                        console.log('✅ Symptoms extracted (fallback):', sentence.trim());
+                        console.log('✅ Symptoms extracted (fallback):', validated);
                         break;
                     }
                 }
@@ -1058,9 +1059,12 @@ class EnhancedAppointmentCreator {
                                     lc.includes('pressure') || lc.includes('bp') || lc.includes('chest') ||
                                     lc.includes('stomach') || lc.includes('nausea') || lc.includes('dizz') ||
                                     msg.content.length > 15) {
-                                    this.llmInterface.patientData.symptoms = msg.content.trim();
-                                    console.log('⚠️ Symptoms fallback from conversation:', msg.content);
-                                    break;
+                                    const validated = this.llmInterface.validateSymptoms(msg.content.trim());
+                                    if (validated) {
+                                        this.llmInterface.patientData.symptoms = validated;
+                                        console.log('⚠️ Symptoms fallback from conversation:', validated);
+                                        break;
+                                    }
                                 }
                             }
                         }
