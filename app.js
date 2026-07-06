@@ -1163,11 +1163,13 @@ class EnhancedAppointmentCreator {
         // Debug: Log current patient data
         console.log('📊 Current patient data:', this.llmInterface.patientData);
 
-        // Always refresh quick-book bar after every message, regardless of whether
-        // updateProgress fired — extraction can fail silently and the bar would never appear
+        // Show quick-book bar as soon as name + age + gender + contact are collected
+        // (don't wait for symptoms — patient may already know their doctor)
+        const _pd = this.llmInterface.patientData;
+        const _hasDemo = !!(_pd.name && _pd.age && _pd.gender && _pd.contact);
         const _bar = document.getElementById('quickBookBar');
         if (_bar && !this.bookingInProgress) {
-            _bar.style.display = this.llmInterface.patientData.hasBasicInfo() ? 'block' : 'none';
+            _bar.style.display = _hasDemo ? 'block' : 'none';
         }
     }
 
@@ -1181,6 +1183,10 @@ class EnhancedAppointmentCreator {
         if (inp) inp.disabled = true;
         if (btn) btn.disabled = true;
         if (bar) bar.style.display = 'none';
+        // Default symptoms if patient skipped the symptom step
+        if (!this.llmInterface.patientData.symptoms) {
+            this.llmInterface.patientData.symptoms = 'General consultation';
+        }
         this.llmInterface.patientData.detailedAssessmentDone = true;
         this.addMessage('ai', "Got it — taking you straight to booking.");
         await this.showPreferredDoctorSelection();
@@ -1416,10 +1422,11 @@ class EnhancedAppointmentCreator {
             }
         }
 
-        // Show "Book Now" quick-action bar as soon as basic info is collected
+        // Show "Book Now" quick-action bar as soon as demographic info is collected
         const quickBookBar = document.getElementById('quickBookBar');
         if (quickBookBar && !this.bookingInProgress) {
-            quickBookBar.style.display = data.hasBasicInfo() ? 'block' : 'none';
+            const hasDemo = !!(data.name && data.age && data.gender && data.contact);
+            quickBookBar.style.display = hasDemo ? 'block' : 'none';
         }
 
         // Show extraction history if available
