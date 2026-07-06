@@ -1451,13 +1451,40 @@ class EnhancedAppointmentCreator {
         }
     }
 
-    // ── Step 1: Ask if patient has a preferred doctor (show ALL doctors) ──
+    // ── Step 1: Ask if patient has a preferred doctor (show specialty-filtered doctors) ──
     async showPreferredDoctorSelection() {
         document.getElementById('chatContainer').style.display = 'none';
         document.getElementById('loadingPanel').style.display = 'block';
 
         try {
-            const docRes = await fetch(`${window.location.origin}/api/doctors/available`);
+            const data = this.llmInterface.patientData;
+
+            // Match specialty from the patient's full symptom summary before fetching doctors,
+            // so we only show relevant specialists (not ophthalmologists for GERD symptoms etc.)
+            let matchedSpec = '';
+            try {
+                const kbRes  = await fetch(`${window.location.origin}/api/knowledge-base`);
+                const kbData = await kbRes.json();
+                const matchRes = await fetch(`${window.location.origin}/api/match-specialization`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patientIssues: data.symptomsSummary || data.symptoms || '',
+                        availableSpecializations: kbData.availableSpecializations || [],
+                        knowledgeBaseString: kbData.knowledgeBaseString || '',
+                        preferredTime: data.preferredTime || null
+                    })
+                });
+                const matchData = await matchRes.json();
+                matchedSpec = matchData.specialization || '';
+                console.log('🩺 Specialty matched for preferred doctor panel:', matchedSpec);
+            } catch (_) {}
+
+            const params = new URLSearchParams();
+            if (matchedSpec) params.set('specialization', matchedSpec);
+            if (data.preferredTime) params.set('preferredTime', data.preferredTime);
+
+            const docRes = await fetch(`${window.location.origin}/api/doctors/available?${params}`);
             const docData = await docRes.json();
             const doctors = docData.doctors || [];
 
@@ -1526,14 +1553,14 @@ class EnhancedAppointmentCreator {
             const kbData = await kbRes.json();
             const specs  = kbData.availableSpecializations || [];
 
-            // Match specialization from symptoms via the same backend endpoint
+            // Match specialization from the full symptom summary (not just initial complaint)
             let matchedSpec = '';
             try {
                 const matchRes  = await fetch(`${window.location.origin}/api/match-specialization`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        patientIssues: symptoms,
+                        patientIssues: data.symptomsSummary || symptoms,
                         availableSpecializations: specs,
                         knowledgeBaseString: kbData.knowledgeBaseString,
                         preferredTime: data.preferredTime || null
