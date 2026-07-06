@@ -14,9 +14,10 @@
     "appointmentTime": "09:00",
     "createdAt": "2025-10-08T20:45:34.960Z",
     "doctorId": null,
-    "status": "confirmed",
+    "status": "cancelled",
     "patientId": "8178780088",
-    "notes": null
+    "notes": null,
+    "cancelledAt": "2026-07-06T10:37:40.394Z"
   },
   {
     "id": "1759958031420",
@@ -1174,5 +1175,37 @@
       "addedAt": "2026-06-09T09:07:23.310Z"
     },
     "updatedAt": "2026-06-09T09:07:23.312Z"
+  },
+  {
+    "id": "a1f2e255-4e61-4808-ad06-778e62c0ff61",
+    "doctorId": "GP002",
+    "doctorName": "Dr. Michael Chen",
+    "patient": {
+      "name": "im abhiram",
+      "age": 19,
+      "gender": "Male",
+      "contact": "67183729293",
+      "issues": "headache and vomiting",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "headache and vomiting\nDo you have any history of recent food poisoning or travel? → i have pain in my chest too\nCould you please tell me how long you've been experiencing the headache? → 3 days. i think i might faint"
+    },
+    "appointmentDate": "2026-07-07",
+    "appointmentTime": "09:30",
+    "status": "pending",
+    "urgency": "urgent",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-06T11:34:21.305Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Rehydrate with fluids, monitor for worsening symptoms.",
+        "Consider over-the-counter pain relief medication",
+        "Monitor for signs of dehydration (e.g., decreased urine output)"
+      ],
+      "labTests": [
+        "Complete Blood Count (CBC)",
+        "Electrolytes panel"
+      ],
+      "urgency": "routine"
+    }
   }
 ]

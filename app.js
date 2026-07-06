@@ -907,6 +907,9 @@ class EnhancedAppointmentCreator {
                 const diffData = await diffRes.json();
                 if (diffData.differential && diffData.differential.length) {
                     pd.differential = diffData.differential;
+                    // Fresh differential built — clear the escalation flag so the server's
+                    // follow-up counter returns to normal from the next turn onwards.
+                    pd.escalationDetected = false;
                     console.log('🧬 Differential (pre-LLM):', diffData.differential.map(d =>
                         `${d.condition}(p=${d.probability}, for=${(d.evidence_for||[]).length}, against=${(d.evidence_against||[]).length})`
                     ).join(' | '));
@@ -955,6 +958,23 @@ class EnhancedAppointmentCreator {
             pd.symptomsSummary = pd.symptoms
                 ? [pd.symptoms, ...qaPairs].join('\n')
                 : '';
+
+            // Escalation detection: if the current message introduces new critical symptoms
+            // that weren't in the original complaint, update the symptom profile immediately
+            if (pd.symptoms) {
+                const escalation = this.detectSymptomEscalation(message, pd.symptoms);
+                if (escalation.detected) {
+                    pd.symptoms = `${pd.symptoms}; ${escalation.newSymptoms}`;
+                    pd.symptomsSummary = [pd.symptoms, ...qaPairs].join('\n');
+                    // Reset differential so it re-evaluates with the full symptom picture next turn.
+                    // Set escalationDetected so the server resets the follow-up counter, ensuring
+                    // it asks fresh questions about the new critical symptoms.
+                    pd.differential = [];
+                    pd.escalationDetected = true;
+                    console.log('🚨 Symptom escalation detected:', escalation.newSymptoms);
+                    this.addMessage('ai', escalation.alertMessage);
+                }
+            }
         }
 
         // Get AI response
@@ -1121,6 +1141,35 @@ class EnhancedAppointmentCreator {
 
         // Debug: Log current patient data
         console.log('📊 Current patient data:', this.llmInterface.patientData);
+    }
+
+    detectSymptomEscalation(message, currentSymptoms) {
+        const ESCALATION_CATEGORIES = [
+            { terms: ['chest pain', 'chest tightness', 'chest pressure', 'chest discomfort', 'pain in chest', 'chest hurts', 'chest is hurting', 'chest ache'], label: 'chest pain' },
+            { terms: ['faint', 'fainting', 'passed out', 'blacked out', 'syncope', 'lost consciousness', 'feel faint', 'going to faint', 'nearly fainted'], label: 'fainting' },
+            { terms: ["can't breathe", 'cannot breathe', 'difficulty breathing', 'shortness of breath', 'short of breath', 'trouble breathing', 'breathless', 'unable to breathe'], label: 'difficulty breathing' },
+            { terms: ['coughing blood', 'vomiting blood', 'blood in urine', 'blood in stool', 'rectal bleeding', 'haemoptysis', 'coughing up blood'], label: 'bleeding' },
+            { terms: ['seizure', 'convulsion', 'fits', 'shaking uncontrollably', 'epileptic'], label: 'seizures' },
+            { terms: ['rapid heartbeat', 'heart racing', 'palpitation', 'heart pounding', 'irregular heartbeat', 'skipping beats', 'racing heart'], label: 'heart palpitations' },
+            { terms: ['crushing pain', 'radiating pain', 'pain radiating', 'pain down arm', 'left arm pain', 'jaw pain', 'pain in jaw', 'arm going numb'], label: 'radiating cardiac-type pain' },
+            { terms: ['sudden weakness', 'sudden numbness', 'face drooping', 'arm weakness', 'sudden confusion', 'sudden severe headache', 'worst headache of my life'], label: 'possible stroke symptoms' },
+        ];
+
+        const msgLower = message.toLowerCase();
+        const existingLower = currentSymptoms.toLowerCase();
+
+        const newCritical = [];
+        for (const cat of ESCALATION_CATEGORIES) {
+            const inMessage  = cat.terms.some(t => msgLower.includes(t));
+            const alreadyKnown = cat.terms.some(t => existingLower.includes(t));
+            if (inMessage && !alreadyKnown) newCritical.push(cat.label);
+        }
+
+        if (newCritical.length === 0) return { detected: false };
+
+        const symptomList = newCritical.join(' and ');
+        const alertMessage = `I've noticed you've mentioned ${symptomList}. These can indicate a serious condition — I'm updating your assessment now so we find the right specialist for you.`;
+        return { detected: true, newSymptoms: newCritical.join(', '), alertMessage };
     }
 
     addMessage(sender, text) {
@@ -1626,7 +1675,7 @@ class EnhancedAppointmentCreator {
             const knowledgeBaseString = knowledgeBaseData.knowledgeBaseString;
             
             const matchResult = await this.matcher.matchSpecializationWithGemini(
-                data.symptoms, availableSpecializations, knowledgeBaseString, data.preferredTime
+                data.symptomsSummary || data.symptoms, availableSpecializations, knowledgeBaseString, data.preferredTime
             );
 
             // Find the doctor by name from the enhanced result
@@ -2039,13 +2088,171 @@ showAppointmentResult(appointmentData) {
             <button onclick="restartBooking()" style="background: #4facfe; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer;">
                 Book Another Appointment
             </button>
+            <button onclick="cancelAppointment('${appointmentData.id || ''}','${(appointmentData.patient.contact||'').replace(/\D/g,'').slice(-4)}')"
+                style="background: #ef4444; color: white; border: none; padding: 15px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-left: 10px;"
+                ${appointmentData.id ? '' : 'disabled'}>
+                Cancel
+            </button>
+        </div>
+
+        <div id="ratingSection" style="margin-top:24px;text-align:center;background:#f8fafc;border-radius:10px;padding:16px;">
+            <p style="font-weight:600;margin-bottom:8px">⭐ Rate your booking experience</p>
+            <div id="starRow" style="font-size:1.8rem;cursor:pointer;user-select:none">${[1,2,3,4,5].map(n=>`<span onclick="submitRating(${n},'${appointmentData.id||''}')">☆</span>`).join('')}</div>
+            <p id="ratingMsg" style="font-size:0.85rem;color:#6b7280;margin-top:4px"></p>
+        </div>
+
+        <div id="queueSection" style="margin-top:16px;text-align:center;background:#eef2ff;border-radius:10px;padding:14px;display:none">
+            <p id="queuePosition" style="font-weight:600;font-size:1rem;color:#4f46e5">Checking your queue position…</p>
         </div>
     `;
 
     document.getElementById('appointmentDetails').innerHTML = detailsHTML;
+
+    // Start polling queue position
+    if (appointmentData.id && appointmentData.doctor && appointmentData.appointment) {
+        pollQueuePosition(appointmentData.id, appointmentData.doctor.name, appointmentData.appointment.date);
+    }
 }
 }
 
+
+// ── Voice Input (STT) ─────────────────────────────────────────────────────────
+let _recognition = null;
+let _voiceActive = false;
+
+function initVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('voiceToggleBtn');
+    if (!SpeechRecognition) {
+        if (btn) { btn.title = 'Voice not supported in this browser'; btn.style.opacity = '0.4'; }
+        return;
+    }
+    _recognition = new SpeechRecognition();
+    _recognition.continuous = false;
+    _recognition.interimResults = false;
+    _recognition.lang = 'en-IN';
+
+    _recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        const confidence = e.results[0][0].confidence;
+        const input = document.getElementById('userInput') || document.getElementById('messageInput');
+        if (input) {
+            input.value = transcript;
+            input.dispatchEvent(new Event('input'));
+            if (confidence > 0.65) {
+                // Auto-submit after short delay so user can see what was recognised
+                setTimeout(() => {
+                    const form = input.closest('form');
+                    const sendBtn = document.getElementById('sendBtn') || document.getElementById('sendButton');
+                    if (sendBtn) sendBtn.click();
+                    else if (form) form.requestSubmit();
+                }, 600);
+            }
+        }
+        stopVoice();
+    };
+
+    _recognition.onerror = () => stopVoice();
+    _recognition.onend   = () => stopVoice();
+
+    if (btn) btn.addEventListener('click', toggleVoice);
+}
+
+function toggleVoice() {
+    if (_voiceActive) stopVoice();
+    else startVoice();
+}
+
+function startVoice() {
+    if (!_recognition) return;
+    _voiceActive = true;
+    _recognition.start();
+    const btn = document.getElementById('voiceToggleBtn');
+    if (btn) { btn.style.background = '#ef4444'; btn.title = 'Listening… click to stop'; }
+}
+
+function stopVoice() {
+    if (!_recognition) return;
+    _voiceActive = false;
+    try { _recognition.stop(); } catch (_) {}
+    const btn = document.getElementById('voiceToggleBtn');
+    if (btn) { btn.style.background = ''; btn.title = 'Click to speak'; }
+}
+
+// ── Rating submission ─────────────────────────────────────────────────────────
+async function submitRating(score, appointmentId) {
+    if (!appointmentId) return;
+    const stars = document.getElementById('starRow');
+    const msg   = document.getElementById('ratingMsg');
+    if (stars) stars.innerHTML = [1,2,3,4,5].map(n => `<span style="color:${n<=score?'#f59e0b':'#d1d5db'}">${n<=score?'★':'☆'}</span>`).join('');
+    try {
+        const res = await fetch(`/api/appointments/${appointmentId}/rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (msg) msg.textContent = `Thanks for rating! Your ${score}★ helps others choose.`;
+            if (stars) stars.style.pointerEvents = 'none';
+        } else {
+            if (msg) msg.textContent = data.error || 'Could not submit rating.';
+        }
+    } catch (e) {
+        if (msg) msg.textContent = 'Rating failed — please try again.';
+    }
+}
+
+// ── Queue position polling ────────────────────────────────────────────────────
+let _queueInterval = null;
+
+async function pollQueuePosition(appointmentId, doctorName, date) {
+    const section = document.getElementById('queueSection');
+    const posEl   = document.getElementById('queuePosition');
+    if (!section || !posEl || !doctorName || !date) return;
+    section.style.display = 'block';
+
+    async function check() {
+        try {
+            const res  = await fetch(`/api/queue/${encodeURIComponent(doctorName)}/${date}`);
+            const data = await res.json();
+            if (!data.success) return;
+            const entry = data.queue.find(q => q.appointmentId === appointmentId);
+            if (entry) {
+                posEl.textContent = `You are #${entry.position} in queue · Estimated wait: ${(entry.position - 1) * 15} min`;
+            } else {
+                posEl.textContent = `Queue: ${data.totalConfirmed} confirmed today`;
+            }
+        } catch (_) {}
+    }
+    check();
+    _queueInterval = setInterval(check, 60000);
+}
+
+// ── Patient cancel ────────────────────────────────────────────────────────────
+async function cancelAppointment(appointmentId, last4) {
+    if (!appointmentId) { alert('Appointment ID not available.'); return; }
+    const confirm = window.confirm('Are you sure you want to cancel this appointment?');
+    if (!confirm) return;
+    const contact = last4 || prompt('Enter last 4 digits of your contact number to verify:');
+    if (!contact) return;
+    try {
+        const res = await fetch(`/api/appointments/${appointmentId}/cancel`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ last4: String(contact).slice(-4) })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Appointment cancelled successfully.');
+            if (_queueInterval) clearInterval(_queueInterval);
+        } else {
+            alert('❌ ' + (data.error || 'Could not cancel appointment.'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
 
 // Global variables
 let appointmentSystem = null;
@@ -2062,6 +2269,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check backend connectivity
     checkBackendConnection();
+
+    // Init voice STT
+    initVoiceInput();
 
     // Start button
     document.getElementById('startBtn').addEventListener('click', async function() {

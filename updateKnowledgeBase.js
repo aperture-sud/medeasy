@@ -300,6 +300,54 @@ class KnowledgeBaseUpdater {
         }
     }
 
+    // Update the Rating and ReviewCount columns for a doctor in the Excel file.
+    async updateDoctorRating(doctorName, averageRating, reviewCount) {
+        try {
+            if (!fs.existsSync(this.filePath)) return { success: false, error: 'File not found' };
+            const workbook = XLSX.readFile(this.filePath);
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            if (!data.length) return { success: false, error: 'Empty sheet' };
+
+            const objKeys = Object.keys(data[0]);
+            const nameKey = this.findKey(objKeys, ['name', 'doctor name', 'full name']);
+            let ratingKey = this.findKey(objKeys, ['rating', 'stars', 'score', 'rate']);
+            let reviewKey = this.findKey(objKeys, ['review', 'reviews', 'count', 'total']);
+            if (!ratingKey) {
+                ratingKey = 'Rating';
+                for (const r of data) r[ratingKey] = r[ratingKey] || '';
+            }
+            if (!reviewKey) {
+                reviewKey = 'ReviewCount';
+                for (const r of data) r[reviewKey] = r[reviewKey] || '';
+            }
+
+            const targetNorm = this.normalizeName(doctorName);
+            let found = false;
+            for (const row of data) {
+                const nameVal = nameKey ? (row[nameKey] || '') : '';
+                const norm = this.normalizeName(nameVal);
+                if (!norm) continue;
+                if (norm === targetNorm || norm.includes(targetNorm) || targetNorm.includes(norm)) {
+                    row[ratingKey] = averageRating;
+                    row[reviewKey] = reviewCount;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return { success: false, error: `Doctor "${doctorName}" not found` };
+
+            workbook.Sheets[sheetName] = XLSX.utils.json_to_sheet(data);
+            XLSX.writeFile(workbook, this.filePath);
+            console.log(`⭐ Updated ${doctorName} rating: ${averageRating} (${reviewCount} reviews)`);
+            return { success: true };
+        } catch (e) {
+            console.error('❌ updateDoctorRating error:', e);
+            return { success: false, error: e.message };
+        }
+    }
+
     // Backup the knowledge base file before updating (kept for compatibility)
     async createBackup() {
         try {

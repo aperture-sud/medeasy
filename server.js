@@ -289,6 +289,103 @@ const VISION_MODEL  = process.env.VISION_MODEL  || 'minicpm-v';
 let hfServiceAvailable  = false;
 let visionModelAvailable = false;
 
+// ── BART-MNLI sidecar (main.py) ───────────────────────────────────────────────
+// Set CLASSIFIER=bart to use BART-MNLI instead of Gemini for specialty prediction.
+// Default stays 'gemini' so existing behaviour is unchanged.
+const BART_URL = process.env.BART_URL || 'http://localhost:8000';
+const ACTIVE_CLASSIFIER = (process.env.CLASSIFIER || 'gemini').toLowerCase();
+let bartServiceAvailable = false;
+
+async function checkBARTService() {
+    try {
+        const res = await axios.get(`${BART_URL}/health`, { timeout: 3000 });
+        if (res.data && res.data.model_loaded) {
+            bartServiceAvailable = true;
+            console.log('✅ BART-MNLI classifier sidecar ready');
+        } else {
+            bartServiceAvailable = false;
+            console.warn('⚠️ BART sidecar running but model not yet loaded (still warming up)');
+        }
+    } catch (_) {
+        bartServiceAvailable = false;
+        if (ACTIVE_CLASSIFIER === 'bart') {
+            console.warn('⚠️ BART sidecar not reachable. Start it with: uvicorn main:app --port 8000');
+        }
+    }
+}
+
+// Classify symptoms using BART-MNLI zero-shot NLI.
+// Returns { specialization, confidence, method } or null on failure.
+async function classifySpecialtyBART(symptoms, availableSpecializations) {
+    // Step 1: RAG candidate narrowing — pick top 3 specialties by cosine similarity
+    let candidates = availableSpecializations.slice();
+    if (ragReady && ragStore.length > 0) {
+        try {
+            const queryVec = await embedText(symptoms.substring(0, 500));
+            // Compute best similarity score per specialty
+            const specScores = {};
+            for (const chunk of ragStore) {
+                if (!chunk.embedding) continue;
+                const sim = cosineSimilarity(queryVec, chunk.embedding);
+                if (!specScores[chunk.specialty] || sim > specScores[chunk.specialty]) {
+                    specScores[chunk.specialty] = sim;
+                }
+            }
+            // Map specialty directory names to displayable names used in availableSpecializations
+            const SPEC_MAP = {
+                'Cardiology':        'Cardiologist',
+                'Dermatology':       'Dermatologist',
+                'General':           'General Physician',
+                'Gastroenterology':  'General Physician',
+                'Musculoskeletal':   'General Physician',
+                'Respiratory':       'General Physician',
+                'Urology':           'Urologist',
+                'Gynaecology':       'Gynaecologist',
+                'Ophthalmology':     'Ophthalmologist',
+            };
+            // Accumulate scores by display name
+            const displayScores = {};
+            for (const [dir, score] of Object.entries(specScores)) {
+                const display = SPEC_MAP[dir] || dir;
+                if (!displayScores[display] || score > displayScores[display]) {
+                    displayScores[display] = score;
+                }
+            }
+            const sorted = Object.entries(displayScores)
+                .filter(([name]) => availableSpecializations.includes(name))
+                .sort(([, a], [, b]) => b - a);
+            if (sorted.length > 0) {
+                candidates = sorted.slice(0, 3).map(([name]) => name);
+                console.log('🔍 BART RAG candidates:', candidates);
+            }
+        } catch (_) {
+            // embedText needs Ollama; fall back to all specializations
+        }
+    }
+
+    // Step 2: BART-MNLI NLI classification
+    const hypotheses = candidates.map(s => `This patient requires ${s} care`);
+    const res = await axios.post(`${BART_URL}/classify`, {
+        premise: symptoms.substring(0, 1000),
+        hypotheses,
+        multi_label: false
+    }, { timeout: 30000 });
+
+    const data = res.data;
+    // Map hypothesis back to specialty name
+    const topHypothesis = data.top_label;
+    const matched = candidates.find(s => topHypothesis.includes(s)) || candidates[0];
+    return {
+        specialization: matched,
+        confidence: data.top_score,
+        method: 'bart-mnli',
+        allScores: data.labels.map((l, i) => ({
+            label: candidates.find(s => l.includes(s)) || l,
+            score: data.scores[i]
+        }))
+    };
+}
+
 async function checkHFService() {
     try {
         const res = await axios.get(`${OLLAMA_URL}/api/tags`, { timeout: 3000 });
@@ -381,9 +478,11 @@ async function initGemini() {
     }
 }
 
-// Check Ollama and probe Gemini once at startup; no further retries
+// Check Ollama, probe Gemini, and check BART sidecar once at startup
 checkHFService();
 initGemini();
+checkBARTService();
+console.log(`🔀 Active classifier: ${ACTIVE_CLASSIFIER.toUpperCase()} (set CLASSIFIER=bart to switch)`);
 
 // Health check endpoint with email service status
 app.get('/api/health', (req, res) => {
@@ -460,7 +559,11 @@ app.post('/api/medical-chat', async (req, res) => {
         const allBasicCollected = patientData.name && patientData.age && patientData.gender && patientData.contact && patientData.symptoms;
         const assistantTurns = conversationHistory.filter(m => m.role === 'assistant').length;
         // First ~4 assistant turns = intro + basic info. Follow-ups start after that.
-        const followUpsDone = allBasicCollected ? Math.max(0, assistantTurns - 4) : 0;
+        // If a symptom escalation was just detected, reset follow-up count so we ask fresh
+        // questions about the new critical symptoms rather than concluding prematurely.
+        const followUpsDone = patientData.escalationDetected
+            ? 0
+            : (allBasicCollected ? Math.max(0, assistantTurns - 4) : 0);
         const needsMoreFollowUp = hasSymptoms && followUpsDone < 3;
 
         // --- RAG context: only inject during follow-up phase to avoid repetition ---
@@ -1178,7 +1281,49 @@ app.post('/api/match-specialization', async (req, res) => {
     try {
         const { patientIssues, availableSpecializations, knowledgeBaseString, preferredTime } = req.body;
 
-        if (!model && !hfServiceAvailable) {
+        // ── BART-MNLI pipeline ────────────────────────────────────────────────
+        if (ACTIVE_CLASSIFIER === 'bart') {
+            if (!bartServiceAvailable) {
+                // Try to reach the sidecar on this request in case it just started
+                await checkBARTService();
+            }
+            if (!bartServiceAvailable) {
+                return res.json({ error: 'BART classifier sidecar not available. Start with: uvicorn main:app --port 8000' });
+            }
+            try {
+                const bartResult = await classifySpecialtyBART(patientIssues, availableSpecializations);
+                // Slot selection via pure code (no AI)
+                const doctors = await knowledgeBaseReader.readKnowledgeBase();
+                const appts   = await readAppointments();
+                const matched = doctors.find(d => {
+                    const spec = (d.specialization || d.Specialization || '').toLowerCase();
+                    return spec.includes(bartResult.specialization.toLowerCase()) ||
+                           bartResult.specialization.toLowerCase().includes(spec);
+                });
+                let slot = null;
+                if (matched) {
+                    slot = await computeNextAvailableSlot(matched, appts, 15, preferredTime || null);
+                }
+                return res.json({
+                    specialization: bartResult.specialization,
+                    doctorName: matched ? (matched.name || matched.doctorName) : null,
+                    confidence: bartResult.confidence,
+                    reason: `BART-MNLI classification (entailment score: ${bartResult.confidence.toFixed(2)})`,
+                    appointmentDate: slot ? slot.appointmentDate : null,
+                    appointmentTime: slot ? slot.appointmentTime : null,
+                    schedulingReason: slot ? 'Next available slot (deterministic)' : 'No slot found',
+                    method: 'bart-mnli',
+                    allScores: bartResult.allScores,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (bartErr) {
+                console.error('❌ BART classification failed:', bartErr.message);
+                return res.json({ error: `BART classification failed: ${bartErr.message}` });
+            }
+        }
+
+        // ── Gemini pipeline (default) ─────────────────────────────────────────
+        if (!isGeminiAvailable() && !hfServiceAvailable) {
             return res.json({
                 error: 'AI service not available for specialization matching'
             });
@@ -1704,7 +1849,47 @@ function isInPreferredWindow(date, preferredTime) {
     return true;
 }
 
-async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 15, preferredTime = null) {
+// Detect urgency from symptoms + diagnosis before booking.
+// Returns 'routine' | 'urgent' | 'emergency'.
+// Uses keyword fallback so it works even without an AI service.
+async function detectUrgency(symptoms, diagnosis) {
+    const text = `${symptoms || ''} ${diagnosis || ''}`.toLowerCase();
+
+    // Keyword fast-path (always runs first for emergency)
+    const EMERGENCY_KW = ['unconscious', 'unresponsive', 'not breathing', 'cardiac arrest', 'stroke', 'seizure', 'severe chest pain', 'crushing chest', 'cannot breathe', 'anaphylaxis', 'anaphylactic', 'hemorrhage', 'haemorrhage', 'severe bleeding', 'overdose', 'suicidal'];
+    const URGENT_KW    = ['chest pain', 'shortness of breath', 'difficulty breathing', 'high fever', 'severe pain', 'persistent vomiting', 'blood in urine', 'blood in stool', 'sudden vision loss', 'sudden hearing loss', 'severe headache', 'fainting', 'syncope', 'rapid heart', 'palpitation'];
+
+    if (EMERGENCY_KW.some(kw => text.includes(kw))) return 'emergency';
+    if (URGENT_KW.some(kw => text.includes(kw))) return 'urgent';
+
+    // LLM refinement (if available) — only for non-obvious cases
+    if (isGeminiAvailable() || hfServiceAvailable) {
+        try {
+            const prompt = `Patient complaint: "${(symptoms || '').substring(0, 300)}"
+Preliminary diagnosis: "${(diagnosis || 'unknown').substring(0, 100)}"
+Classify urgency as exactly one word: routine, urgent, or emergency.
+- emergency: life-threatening, needs immediate care (minutes)
+- urgent: needs care within 24 hours
+- routine: can wait for a regular appointment
+Reply with only the single word.`;
+            let answer = '';
+            if (isGeminiAvailable()) {
+                const m = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', generationConfig: { temperature: 0.0, maxOutputTokens: 10 } });
+                const r = await m.generateContent(prompt);
+                answer = r.response.text().trim().toLowerCase();
+            } else {
+                answer = (await generateAIText(prompt, 10)).trim().toLowerCase();
+            }
+            if (['emergency', 'urgent', 'routine'].includes(answer)) return answer;
+        } catch (_) {}
+    }
+    return 'routine';
+}
+
+// urgency: 'routine' | 'urgent' | 'emergency'
+// - urgent    → only search within 24h window (expands to 48h if nothing found)
+// - emergency → ignore preferredTime, use higher MAX_ITERS, set isEmergency flag
+async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 15, preferredTime = null, urgency = 'routine') {
   // Prefer saved availability.json over Excel string
   try {
     const allAvail = await readAvailability();
@@ -1763,6 +1948,7 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
     const ct = formatTime(candidate);
     for (const a of appointments) {
       if (!a.doctorName) continue;
+      if (a.status === 'cancelled') continue; // cancelled slots are free
       if ((a.doctorName === doctor.name) || (a.doctorName === doctor.doctorName) || (a.doctorName === doctor['Doctor Name'])) {
         if (a.appointmentDate === cd && a.appointmentTime === ct) return true;
       }
@@ -1770,9 +1956,18 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
     return false;
   }
 
-  const MAX_ITERS = 200;
+  // Urgency constraints
+  const isEmergency = urgency === 'emergency';
+  const isUrgent    = urgency === 'urgent';
+  if (isEmergency) preferredTime = null; // emergencies ignore time preference
+  const urgentDeadline = isUrgent ? new Date(Date.now() + 24 * 3600 * 1000) : null;
+
+  const MAX_ITERS = isEmergency ? 500 : 200;
   let iter = 0;
   while (iter++ < MAX_ITERS) {
+    // Urgent: skip if candidate is beyond 24h from now (retry with 48h on fallback)
+    if (urgentDeadline && candidate > urgentDeadline) break;
+
     let withinAvailability = true;
     const candidateDateStr = formatDate(candidate);
 
@@ -1814,14 +2009,36 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
     }
 
     if (withinAvailability && !conflicts(candidate) && isInPreferredWindow(candidate, preferredTime)) {
-      return { appointmentDate: formatDate(candidate), appointmentTime: formatTime(candidate) };
+      return {
+        appointmentDate: formatDate(candidate),
+        appointmentTime: formatTime(candidate),
+        ...(isEmergency && { isEmergency: true }),
+        ...(isUrgent    && { isUrgent: true }),
+      };
     }
     candidate = addMinutes(candidate, durationMinutes);
   }
 
-  // If no slot matched the preferred window, fall back without that constraint
+  // Fallback: drop preferred time, or extend urgent window to 48h
   if (preferredTime) {
-    return computeNextAvailableSlot(doctor, appointments, durationMinutes, null);
+    return computeNextAvailableSlot(doctor, appointments, durationMinutes, null, urgency);
+  }
+  if (isUrgent) {
+    // Expand to 48h
+    const extended = new Date(Date.now() + 48 * 3600 * 1000);
+    let iter2 = 0;
+    while (iter2++ < 200 && candidate <= extended) {
+      const cd = formatDate(candidate);
+      const ct = formatTime(candidate);
+      const hasConflict = appointments.some(a =>
+        a.doctorName && (a.doctorName === doctor.name || a.doctorName === doctor.doctorName) &&
+        a.appointmentDate === cd && a.appointmentTime === ct
+      );
+      if (!hasConflict) {
+        return { appointmentDate: cd, appointmentTime: ct, isUrgent: true };
+      }
+      candidate = addMinutes(candidate, durationMinutes);
+    }
   }
   return null;
 }
@@ -1911,9 +2128,17 @@ app.post('/api/book-appointment', async (req, res) => {
 
       if (!doctor) throw new Error('Doctor not found');
 
+      // Detect urgency before slot selection so priority can affect scheduling
+      const urgencyLevel = await detectUrgency(patient.issues, patient.diagnosis).catch(() => 'routine');
+      if (urgencyLevel === 'emergency') {
+        console.warn('🚨 EMERGENCY booking detected — prioritising immediate slot');
+      } else if (urgencyLevel === 'urgent') {
+        console.warn('⚡ URGENT booking — finding slot within 24h');
+      }
+
       const slot = (requestedDate && requestedTime)
         ? { appointmentDate: requestedDate, appointmentTime: requestedTime }
-        : await computeNextAvailableSlot(doctor, currentAppts, 15, preferredTime || null);
+        : await computeNextAvailableSlot(doctor, currentAppts, 15, preferredTime || null, urgencyLevel);
       if (!slot) throw new Error('No available slot found in the next few days/hours');
 
       // Resolve doctorId from auth DB so doctor portal can filter appointments
@@ -1937,13 +2162,15 @@ app.post('/api/book-appointment', async (req, res) => {
       }
 
       const appt = {
-        id: Date.now().toString(),
+        id: require('crypto').randomUUID(),
         doctorId: matched ? matched.id : null,
         doctorName: resolvedName,
         patient: patient,
         appointmentDate: slot.appointmentDate,
         appointmentTime: slot.appointmentTime,
         status: 'pending',
+        urgency: urgencyLevel,
+        emergencyFlag: urgencyLevel === 'emergency',
         createdAt: new Date().toISOString(),
         aiSuggestions: aiSuggestions || null
       };
@@ -2023,13 +2250,171 @@ app.post('/api/book-appointment', async (req, res) => {
   }
 });
 
-// endpoint to list appointments (optionally filter by doctor)
+// endpoint to list appointments (optionally filter by doctor or urgency)
 app.get('/api/appointments', async (req, res) => {
   try {
-    const doctorName = req.query.doctor;
+    const { doctor: doctorName, urgency: urgencyFilter } = req.query;
     const appts = await readAppointments();
-    const out = doctorName ? appts.filter(a => a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase())) : appts;
+    let out = doctorName ? appts.filter(a => a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase())) : appts;
+    if (urgencyFilter) out = out.filter(a => a.urgency === urgencyFilter);
     res.json({ success: true, total: out.length, appointments: out });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── Live Queue Tracking ────────────────────────────────────────────────────────
+// GET /api/queue/:doctorName/:date
+// Returns the ordered queue for a doctor on a given date (confirmed + pending only).
+app.get('/api/queue/:doctorName/:date', async (req, res) => {
+  try {
+    const { doctorName, date } = req.params;
+    const appts = await readAppointments();
+    const queue = appts
+      .filter(a =>
+        a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase()) &&
+        a.appointmentDate === date &&
+        ['confirmed', 'pending'].includes(a.status)
+      )
+      .sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime))
+      .map((a, idx) => ({
+        position: idx + 1,
+        appointmentId: a.id,
+        patientInitials: (a.patient && a.patient.name)
+          ? a.patient.name.split(' ').map(w => w[0].toUpperCase() + '.').join(' ')
+          : 'Unknown',
+        time: a.appointmentTime,
+        urgency: a.urgency || 'routine',
+        status: a.status,
+      }));
+    const slotMinutes = 15;
+    res.json({
+      success: true,
+      doctorName,
+      date,
+      queue,
+      totalConfirmed: queue.filter(q => q.status === 'confirmed').length,
+      estimatedWaitMinutes: queue.length * slotMinutes,
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── Patient Ratings ───────────────────────────────────────────────────────────
+// Recalculate a doctor's average rating from all rated appointments and persist to xlsx.
+async function recalculateDoctorRating(doctorName) {
+  const appts = await readAppointments();
+  const rated = appts.filter(a =>
+    a.doctorName && a.doctorName.toLowerCase() === doctorName.toLowerCase() &&
+    a.patientRating && typeof a.patientRating.score === 'number'
+  );
+  if (rated.length === 0) return null;
+  const avg = rated.reduce((sum, a) => sum + a.patientRating.score, 0) / rated.length;
+  const rounded = Math.round(avg * 10) / 10;
+  try {
+    await knowledgeBaseUpdater.updateDoctorRating(doctorName, rounded, rated.length);
+  } catch (e) {
+    console.warn('⚠️ Could not persist rating to xlsx:', e.message);
+  }
+  return { average: rounded, count: rated.length };
+}
+
+// POST /api/appointments/:id/rate  — patient submits a star rating
+app.post('/api/appointments/:id/rate', async (req, res) => {
+  try {
+    const { score, comment } = req.body || {};
+    if (!score || typeof score !== 'number' || score < 1 || score > 5) {
+      return res.status(400).json({ success: false, error: 'score must be a number 1–5' });
+    }
+    const appts = await readAppointments();
+    const idx = appts.findIndex(a => a.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Appointment not found' });
+    const appt = appts[idx];
+    if (appt.patientRating) {
+      return res.status(409).json({ success: false, error: 'Already rated' });
+    }
+    appt.patientRating = { score, comment: (comment || '').substring(0, 500), ratedAt: new Date().toISOString() };
+    await writeAppointments(appts);
+    const stats = await recalculateDoctorRating(appt.doctorName);
+    res.json({ success: true, rating: appt.patientRating, doctorStats: stats });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// GET /api/appointments/:id/rating  — check if already rated
+app.get('/api/appointments/:id/rating', async (req, res) => {
+  try {
+    const appts = await readAppointments();
+    const appt = appts.find(a => a.id === req.params.id);
+    if (!appt) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, rated: !!appt.patientRating, rating: appt.patientRating || null });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── Patient Cancellation & Rescheduling ──────────────────────────────────────
+// Auth: appointment id + last 4 digits of patient contact number.
+
+function verifyPatientToken(appt, last4) {
+  if (!appt || !appt.patient || !appt.patient.contact) return false;
+  const contact = String(appt.patient.contact).replace(/\D/g, '');
+  return contact.endsWith(String(last4).replace(/\D/g, ''));
+}
+
+// PUT /api/appointments/:id/cancel
+app.put('/api/appointments/:id/cancel', async (req, res) => {
+  try {
+    const { last4 } = req.body || {};
+    if (!last4) return res.status(400).json({ success: false, error: 'last4 (last 4 digits of contact) required' });
+    const appts = await readAppointments();
+    const idx = appts.findIndex(a => a.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Appointment not found' });
+    if (!verifyPatientToken(appts[idx], last4)) {
+      return res.status(403).json({ success: false, error: 'Verification failed — check your contact number' });
+    }
+    if (appts[idx].status === 'cancelled') {
+      return res.status(409).json({ success: false, error: 'Already cancelled' });
+    }
+    appts[idx].status = 'cancelled';
+    appts[idx].cancelledAt = new Date().toISOString();
+    await writeAppointments(appts);
+    res.json({ success: true, message: 'Appointment cancelled', appointment: appts[idx] });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// PUT /api/appointments/:id/reschedule  — patient reschedules to a new slot
+app.put('/api/appointments/:id/reschedule', async (req, res) => {
+  try {
+    const { last4, newDate, newTime } = req.body || {};
+    if (!last4 || !newDate || !newTime) {
+      return res.status(400).json({ success: false, error: 'last4, newDate, and newTime are required' });
+    }
+    const appts = await readAppointments();
+    const idx = appts.findIndex(a => a.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Appointment not found' });
+    if (!verifyPatientToken(appts[idx], last4)) {
+      return res.status(403).json({ success: false, error: 'Verification failed — check your contact number' });
+    }
+    // Check the new slot isn't already taken
+    const conflict = appts.some((a, i) =>
+      i !== idx &&
+      a.doctorName === appts[idx].doctorName &&
+      a.appointmentDate === newDate &&
+      a.appointmentTime === newTime &&
+      a.status !== 'cancelled'
+    );
+    if (conflict) return res.status(409).json({ success: false, error: 'That slot is already taken — choose another' });
+    appts[idx].appointmentDate = newDate;
+    appts[idx].appointmentTime = newTime;
+    appts[idx].status = 'rescheduled';
+    appts[idx].rescheduledAt = new Date().toISOString();
+    await writeAppointments(appts);
+    res.json({ success: true, message: 'Appointment rescheduled', appointment: appts[idx] });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }

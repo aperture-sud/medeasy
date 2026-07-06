@@ -178,6 +178,15 @@
         .pill-rejected   { background: #fee2e2; color: #991b1b; }
         .pill-rescheduled{ background: #dbeafe; color: #1e40af; }
         .pill-cancelled  { background: #f3f4f6; color: #6b7280; }
+        .urgency-badge { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 12px; margin-left: 0.4rem; vertical-align: middle; }
+        .urgency-urgent    { background: #fef3c7; color: #b45309; }
+        .urgency-emergency { background: #fee2e2; color: #b91c1c; animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red { 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
+        .queue-card { background: #fff; border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid #667eea; }
+        .queue-position { font-size: 1.4rem; font-weight: 800; color: #667eea; min-width: 2rem; text-align: center; }
+        .queue-info { flex: 1; }
+        .queue-name { font-weight: 600; color: #1f2937; }
+        .queue-time { font-size: 0.82rem; color: #6b7280; margin-top: 0.1rem; }
         .cal-more { font-size: 0.65rem; color: #9ca3af; margin-top: 0.1rem; }
         .avail-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 600px) { .avail-form { grid-template-columns: 1fr; } .cal-grid { gap: 0.2rem; } .cal-cell { min-height: 70px; } }
@@ -253,6 +262,7 @@
 
     <div class="tabs">
         <button class="tab-btn active" data-tab="appointments" onclick="switchTab(this)">📅 Appointments</button>
+        <button class="tab-btn" data-tab="queue" onclick="switchTab(this);loadQueue()">🔢 Queue</button>
         <button class="tab-btn" data-tab="patients" onclick="switchTab(this)">🗂 Patient Records</button>
         <button class="tab-btn" data-tab="calendar" onclick="switchTab(this)">📆 Calendar</button>
         <button class="tab-btn" data-tab="prescriptions" onclick="switchTab(this)">💊 Prescriptions</button>
@@ -277,6 +287,17 @@
             <div id="apptList" class="appt-list">
                 <div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ── Live Queue ── -->
+    <div id="tab-queue" class="tab-panel">
+        <div class="card">
+            <div class="card-header">
+                <div><h2>Today's Queue</h2><div class="subtitle" id="queueSubtitle">Loading queue…</div></div>
+                <button class="btn-primary" onclick="loadQueue()" style="padding:0.4rem 1rem;font-size:0.85rem">↻ Refresh</button>
+            </div>
+            <div id="queueList"><div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div></div>
         </div>
     </div>
 
@@ -696,13 +717,19 @@ function renderAppointments() {
         const dateStr = dt.toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'});
         const timeStr = dt.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
         const badge   = `<span class="status-badge badge-${a.status}">${a.status}</span>`;
+        const urgency = a.urgency || (a.aiSuggestions && a.aiSuggestions.urgency) || 'routine';
+        const urgencyBadge = urgency === 'emergency'
+            ? `<span class="urgency-badge urgency-emergency">🚨 Emergency</span>`
+            : urgency === 'urgent'
+            ? `<span class="urgency-badge urgency-urgent">⚡ Urgent</span>`
+            : '';
         const hasNotes = !!a.notes;
         const notesPreview = hasNotes ? `<div class="notes-preview">✅ Notes added · Dx: ${a.notes.diagnosis}</div>` : '';
         const patientId = a.patientId || (a.patient.contact ? a.patient.contact.replace(/\D/g,'').slice(-10) : '');
 
         const canAct = !isPast && a.status !== 'rejected' && a.status !== 'cancelled';
         const hasAI  = !!(a.aiSuggestions && (a.aiSuggestions.treatment || a.aiSuggestions.labTests));
-        const aiPreview = hasAI ? `<div class="ai-suggestions-preview">🤖 AI suggestions ready · Urgency: ${a.aiSuggestions.urgency || 'routine'}</div>` : '';
+        const aiPreview = hasAI ? `<div class="ai-suggestions-preview">🤖 AI suggestions ready · Urgency: ${urgency}</div>` : '';
         const actions = `<div class="action-btns">
             ${canAct && a.status !== 'confirmed'   ? `<button class="btn-accept" onclick="updateStatus('${a.id}','confirmed')">Accept</button>` : ''}
             ${canAct && a.status !== 'rejected'    ? `<button class="btn-reject" onclick="updateStatus('${a.id}','rejected')">Reject</button>` : ''}
@@ -714,7 +741,7 @@ function renderAppointments() {
 
         return `<div class="appt-card status-${a.status}${hasNotes?' has-notes':''}">
             <div class="appt-info">
-                <div class="patient-name">${a.patient.name} <span style="font-weight:400;color:#6b7280;font-size:0.82rem">${a.patient.age}y · ${a.patient.gender}</span></div>
+                <div class="patient-name">${a.patient.name} <span style="font-weight:400;color:#6b7280;font-size:0.82rem">${a.patient.age}y · ${a.patient.gender}</span>${urgencyBadge}</div>
                 <div class="appt-meta">📅 ${dateStr} &nbsp;🕐 ${timeStr} &nbsp;📞 ${a.patient.contact||'—'}</div>
                 <div class="appt-meta" style="margin-top:0.2rem">🩺 ${a.patient.issues||'—'}</div>
                 ${a.patient.diagnosis ? `<span class="appt-diagnosis">Dx: ${a.patient.diagnosis}</span>` : ''}
@@ -724,6 +751,41 @@ function renderAppointments() {
             <div class="appt-actions">${badge}${actions}</div>
         </div>`;
     }).join('');
+}
+
+async function loadQueue() {
+    const el = document.getElementById('queueList');
+    const subtitle = document.getElementById('queueSubtitle');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div>';
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const doctorName = encodeURIComponent(localStorage.getItem('doctorName') || '');
+        const res = await fetch(`/api/queue/${doctorName}/${today}`);
+        const data = await res.json();
+        if (!data.success || !data.queue.length) {
+            el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No patients in queue today.</p></div>';
+            if (subtitle) subtitle.textContent = 'No appointments today';
+            return;
+        }
+        if (subtitle) subtitle.textContent = `${data.totalConfirmed} confirmed · Est. wait: ${data.estimatedWaitMinutes} min`;
+        el.innerHTML = data.queue.map(q => {
+            const urgBadge = q.urgency === 'emergency'
+                ? `<span class="urgency-badge urgency-emergency">🚨 Emergency</span>`
+                : q.urgency === 'urgent'
+                ? `<span class="urgency-badge urgency-urgent">⚡ Urgent</span>`
+                : '';
+            return `<div class="queue-card">
+                <div class="queue-position">#${q.position}</div>
+                <div class="queue-info">
+                    <div class="queue-name">${q.patientInitials} ${urgBadge}</div>
+                    <div class="queue-time">🕐 ${q.time} · ${q.status}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        el.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load queue: ${e.message}</p></div>`;
+    }
 }
 
 async function updateStatus(id, status) {
