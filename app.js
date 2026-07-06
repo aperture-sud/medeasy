@@ -2402,6 +2402,58 @@ document.addEventListener('DOMContentLoaded', function() {
     initVoiceInput();
 
     // Start button
+    document.getElementById('directBookBtn').addEventListener('click', async function() {
+        document.getElementById('setupPanel').style.display = 'none';
+        document.getElementById('chatContainer').style.display = 'flex';
+
+        appointmentSystem = new EnhancedAppointmentCreator(selectedProvider, 'demo-key');
+        appointmentSystem.initVoiceToggle();
+
+        // Show a compact inline form instead of the full conversation
+        const msgs = document.getElementById('chatMessages');
+        msgs.innerHTML = `
+            <div class="message ai">Hi! Just need a few quick details to book your appointment.</div>
+            <div class="message ai" style="padding:0; background:none; box-shadow:none;">
+                <div id="directBookForm" style="background:#fff; border:1px solid #dde; border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; max-width:360px;">
+                    <input id="db_name"    placeholder="Full name"         style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                    <div style="display:flex; gap:8px;">
+                        <input id="db_age"  placeholder="Age"  type="number" style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit; width:70px;">
+                        <select id="db_gender" style="flex:1; padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                            <option value="">Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <input id="db_contact" placeholder="Phone number"     style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                    <input id="db_symptoms" placeholder="Reason for visit (optional)" style="padding:9px 13px; border:1px solid #ccc; border-radius:8px; font-size:14px; font-family:inherit;">
+                    <button id="db_submit" style="background:linear-gradient(135deg,#4facfe,#00f2fe); color:#fff; border:none; padding:10px; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;">Find doctors →</button>
+                </div>
+            </div>`;
+
+        document.getElementById('db_submit').addEventListener('click', async () => {
+            const name    = document.getElementById('db_name').value.trim();
+            const age     = parseInt(document.getElementById('db_age').value);
+            const gender  = document.getElementById('db_gender').value;
+            const contact = document.getElementById('db_contact').value.trim();
+            const symptoms= document.getElementById('db_symptoms').value.trim() || 'General consultation';
+
+            if (!name || !age || !gender || !contact) {
+                alert('Please fill in name, age, gender and phone number.');
+                return;
+            }
+
+            const pd = appointmentSystem.llmInterface.patientData;
+            pd.name = name; pd.age = age; pd.gender = gender;
+            pd.contact = contact; pd.symptoms = symptoms;
+            pd.detailedAssessmentDone = true;
+
+            document.getElementById('directBookForm').remove();
+            appointmentSystem.addMessage('ai', `Got it, ${name}. Let me find the right doctors for you.`);
+            await appointmentSystem.showPreferredDoctorSelection();
+        });
+    });
+
     document.getElementById('startBtn').addEventListener('click', async function() {
         console.log('▶️ Starting LLM-enhanced appointment booking with provider:', selectedProvider);
 

@@ -157,6 +157,33 @@ body {
     transform: translateY(0);
 }
 
+.direct-book-btn {
+    background: transparent;
+    color: #4facfe;
+    border: 2px solid #4facfe;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    width: 100%;
+    max-width: 300px;
+    margin-top: 10px;
+}
+
+.direct-book-btn:hover {
+    background: #4facfe;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
+}
+
+.direct-book-btn:active {
+    transform: translateY(0);
+}
+
 .chat-container {
     display: none;
     height: 600px;
