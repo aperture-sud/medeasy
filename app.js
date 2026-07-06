@@ -867,6 +867,23 @@ class EnhancedAppointmentCreator {
         // Prevent any new input once the booking flow has started
         if (this.bookingInProgress) return;
 
+        // Direct booking intent — patient already knows what they need
+        const DIRECT_BOOK_PHRASES = [
+            'just book', 'book now', 'book appointment', 'book it', 'skip',
+            'i know the doctor', 'i know my doctor', 'already know', 'direct booking',
+            'no need for questions', 'skip questions', 'skip assessment',
+            'book directly', 'direct book', 'go to booking', 'proceed to booking',
+            'i want to book', 'book an appointment now'
+        ];
+        const msgLower = message.trim().toLowerCase();
+        if (this.llmInterface.patientData.hasBasicInfo() &&
+            DIRECT_BOOK_PHRASES.some(p => msgLower.includes(p))) {
+            this.addMessage('user', message);
+            this.llmInterface.conversationHistory.push({ role: 'user', content: message });
+            await this.skipToBooking();
+            return;
+        }
+
         // Add user message
         this.addMessage('user', message);
 
@@ -1147,6 +1164,21 @@ class EnhancedAppointmentCreator {
         console.log('📊 Current patient data:', this.llmInterface.patientData);
     }
 
+    // Skip assessment and go straight to doctor selection
+    async skipToBooking() {
+        if (this.bookingInProgress) return;
+        this.bookingInProgress = true;
+        const inp = document.getElementById('userInput');
+        const btn = document.getElementById('sendBtn');
+        const bar = document.getElementById('quickBookBar');
+        if (inp) inp.disabled = true;
+        if (btn) btn.disabled = true;
+        if (bar) bar.style.display = 'none';
+        this.llmInterface.patientData.detailedAssessmentDone = true;
+        this.addMessage('ai', "Got it — taking you straight to booking.");
+        await this.showPreferredDoctorSelection();
+    }
+
     detectSymptomEscalation(message, currentSymptoms) {
         const ESCALATION_CATEGORIES = [
             { terms: ['chest pain', 'chest tightness', 'chest pressure', 'chest discomfort', 'pain in chest', 'chest hurts', 'chest is hurting', 'chest ache'], label: 'chest pain' },
@@ -1375,6 +1407,12 @@ class EnhancedAppointmentCreator {
                 assessmentElement.className = 'progress-item incomplete';
                 assessmentElement.textContent = '⏳ Assessment Pending';
             }
+        }
+
+        // Show "Book Now" quick-action bar as soon as basic info is collected
+        const quickBookBar = document.getElementById('quickBookBar');
+        if (quickBookBar && !this.bookingInProgress) {
+            quickBookBar.style.display = data.hasBasicInfo() ? 'block' : 'none';
         }
 
         // Show extraction history if available
@@ -2376,6 +2414,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('userInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') { sendMessage(); }
     });
+
+    // Quick-book button
+    const quickBookBtn = document.getElementById('quickBookBtn');
+    if (quickBookBtn) {
+        quickBookBtn.addEventListener('click', () => {
+            if (appointmentSystem) appointmentSystem.skipToBooking();
+        });
+    }
 
     // ── Upload panel logic ──
     const attachBtn       = document.getElementById('attachBtn');
