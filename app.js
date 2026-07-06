@@ -1771,8 +1771,9 @@ class EnhancedAppointmentCreator {
                    gender: data.gender,
                    contact: data.contact || null,
                    email: data.email || null,
-                   issues: data.symptoms || data.extractionHistory?.find(e => e.updates?.symptoms)?.updates?.symptoms || "Not captured",
-                   diagnosis: data.diagnosis || "Assessment pending"
+                   issues: this._buildSymptomSummary(data.symptomsSummary || data.symptoms || ''),
+                   diagnosis: data.diagnosis || this._extractLatestDiagnosis() || "Under assessment",
+                   symptomsSummary: data.symptomsSummary || ''
                   },
 
                 doctor: {
@@ -2065,6 +2066,44 @@ class EnhancedAppointmentCreator {
         };
     }
 
+    // Build a readable symptom summary from the full Q&A log (symptomsSummary format:
+    // "chief complaint\nQuestion? → Answer\nQuestion? → Answer\n...")
+    _buildSymptomSummary(raw) {
+        if (!raw) return 'Not captured';
+        const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return 'Not captured';
+
+        const chief = lines[0];
+        const details = lines.slice(1).map(l => {
+            // Lines are either "Question? → Answer" or plain follow-up answers
+            const arrowIdx = l.indexOf('→');
+            if (arrowIdx !== -1) {
+                const answer = l.slice(arrowIdx + 1).trim();
+                return answer;
+            }
+            return l;
+        }).filter(Boolean);
+
+        if (!details.length) return chief;
+        return `${chief}. ${details.join('. ')}.`.replace(/\.{2,}/g, '.').replace(/\.\s*\./g, '.');
+    }
+
+    // Scan conversation history in reverse to find the chatbot's latest diagnosis statement
+    _extractLatestDiagnosis() {
+        const history = this.llmInterface.conversationHistory;
+        for (let i = history.length - 1; i >= 0; i--) {
+            const msg = history[i];
+            if (msg.role !== 'assistant') continue;
+            const match = msg.content.match(/diagnosis:\s*(.+?)(?:\n|$)/i);
+            if (match) {
+                const candidate = match[1].trim();
+                const validated = this.llmInterface.validateDiagnosis(candidate);
+                if (validated) return validated;
+            }
+        }
+        return null;
+    }
+
     // Find the showAppointmentResult function in app.js and update the patient details section
 
 showAppointmentResult(appointmentData) {
@@ -2078,8 +2117,8 @@ showAppointmentResult(appointmentData) {
             <p><strong>Age:</strong> ${appointmentData.patient.age}</p>
             <p><strong>Gender:</strong> ${appointmentData.patient.gender}</p>
             <p><strong>Contact:</strong> ${appointmentData.patient.contact || 'Not provided'}</p>
-            <p><strong>Issues:</strong> ${appointmentData.patient.issues || 'Not captured'}</p>
-            <p><strong>Diagnosis:</strong> ${appointmentData.patient.diagnosis || 'Assessment pending'}</p>
+            <p><strong>Symptoms:</strong> ${appointmentData.patient.issues || 'Not captured'}</p>
+            <p><strong>Preliminary Diagnosis:</strong> ${appointmentData.patient.diagnosis || 'Under assessment'}</p>
         </div>
 
         <div style="margin-bottom: 20px;">
