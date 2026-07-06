@@ -25,7 +25,13 @@
         <!-- Chat Container -->
         <div class="chat-container" id="chatContainer" style="display: none;">
             <div class="chat-messages" id="chatMessages"></div>
-            
+
+            <!-- Quick-book bar: shown once name/age/gender/symptoms are collected -->
+            <div id="quickBookBar" style="display:none; padding:10px 16px; background:#eef4ff; border-top:2px solid #4a90e2;">
+                <span style="font-size:13px; color:#444;">Already know your doctor?</span>
+                <button id="quickBookBtn" style="background:#1a73e8; color:#fff; border:none; padding:6px 18px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">Book appointment now →</button>
+            </div>
+
             <div class="progress-panel" id="progressPanel">
                 <div class="progress-item incomplete" id="nameProgress">❌ Name</div>
                 <div class="progress-item incomplete" id="ageProgress">❌ Age</div>
@@ -58,12 +64,6 @@
                         <button class="upload-confirm-btn" id="uploadConfirmBtn" disabled>Attach</button>
                         <button class="upload-cancel-btn" id="uploadCancelBtn">✕</button>
                     </div>
-                </div>
-
-                <!-- Quick-book bar — shown once basic info is collected -->
-                <div id="quickBookBar" style="display:none; padding: 6px 10px; background: #f0f7ff; border-top: 1px solid #c8dff7; border-radius: 6px 6px 0 0;">
-                    <span style="font-size:13px; color:#555; margin-right:8px;">Already know your doctor?</span>
-                    <button id="quickBookBtn" style="background:#1a73e8; color:#fff; border:none; padding:5px 14px; border-radius:20px; font-size:13px; cursor:pointer;">Book appointment now →</button>
                 </div>
 
                 <div class="chat-input">

@@ -1162,6 +1162,13 @@ class EnhancedAppointmentCreator {
 
         // Debug: Log current patient data
         console.log('📊 Current patient data:', this.llmInterface.patientData);
+
+        // Always refresh quick-book bar after every message, regardless of whether
+        // updateProgress fired — extraction can fail silently and the bar would never appear
+        const _bar = document.getElementById('quickBookBar');
+        if (_bar && !this.bookingInProgress) {
+            _bar.style.display = this.llmInterface.patientData.hasBasicInfo() ? 'block' : 'none';
+        }
     }
 
     // Skip assessment and go straight to doctor selection
