@@ -1,0 +1,987 @@
+{
+  "generatedAt": "2026-07-07T07:15:14.710Z",
+  "testCaseCount": 103,
+  "gemini": {
+    "results": [
+      {
+        "symptoms": "chest pain radiating to left arm, shortness of breath, sweating",
+        "correct": true,
+        "predicted": "Cardiologist",
+        "confidence": 0.92,
+        "latencyMs": 123,
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "heart palpitations, rapid heartbeat, dizziness",
+        "correct": true,
+        "predicted": "Cardiologist",
+        "confidence": 0.92,
+        "latencyMs": 31,
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "high blood pressure, headache, blurred vision",
+        "correct": false,
+        "predicted": "Ophthalmologist",
+        "confidence": 0.92,
+        "latencyMs": 45,
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "persistent skin rash, itching, redness on arms",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 48,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "severe acne, oily skin, scarring on face",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 27,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "eczema flare, dry scaly patches, intense itching",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 31,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "hair loss, thinning hair, scalp problems",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 44,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "fever, cold, cough, runny nose, body aches",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2930,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "stomach pain, nausea, vomiting, diarrhoea",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 1,
+        "latencyMs": 2735,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "fatigue, headache, loss of appetite, general weakness",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2961,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "back pain, lower back stiffness, muscle spasm",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2391,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "knee pain, joint swelling, difficulty walking",
+        "correct": false,
+        "predicted": "No AI service available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 2197,
+        "error": "No AI service available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "burning sensation during urination, frequent urge to urinate",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 1,
+        "latencyMs": 3094,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "kidney stone pain, flank pain, blood in urine",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 34,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "prostate problems, difficulty urinating, weak stream",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 29,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "irregular periods, severe menstrual cramps, heavy bleeding",
+        "correct": true,
+        "predicted": "Gynaecologist",
+        "confidence": 0.92,
+        "latencyMs": 28,
+        "correctSpecialty": "Gynaecologist"
+      },
+      {
+        "symptoms": "missed period, pregnancy symptoms, nausea in the morning",
+        "correct": true,
+        "predicted": "Gynaecologist",
+        "confidence": 0.92,
+        "latencyMs": 25,
+        "correctSpecialty": "Gynaecologist"
+      },
+      {
+        "symptoms": "pelvic pain, ovarian cyst, vaginal discharge",
+        "correct": true,
+        "predicted": "Gynaecologist",
+        "confidence": 0.92,
+        "latencyMs": 47,
+        "correctSpecialty": "Gynaecologist"
+      },
+      {
+        "symptoms": "blurred vision, eye pain, redness in eyes",
+        "correct": true,
+        "predicted": "Ophthalmologist",
+        "confidence": 0.92,
+        "latencyMs": 44,
+        "correctSpecialty": "Ophthalmologist"
+      },
+      {
+        "symptoms": "sudden vision loss, floaters, flashes of light",
+        "correct": true,
+        "predicted": "Ophthalmologist",
+        "confidence": 0.92,
+        "latencyMs": 37,
+        "correctSpecialty": "Ophthalmologist"
+      },
+      {
+        "symptoms": "eye infection, discharge, swollen eyelid",
+        "correct": true,
+        "predicted": "Ophthalmologist",
+        "confidence": 0.92,
+        "latencyMs": 37,
+        "correctSpecialty": "Ophthalmologist"
+      },
+      {
+        "symptoms": "chest tightness, wheezing, shortness of breath on exertion",
+        "correct": false,
+        "predicted": "Cardiologist",
+        "confidence": 0.92,
+        "latencyMs": 33,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "severe acne with cysts, painful nodules under skin",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 38,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "diabetes management, blood sugar control, insulin issues",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2657,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "urinary incontinence, inability to hold urine",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 47,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "My throat is super sore and it hurts to swallow anything, plus I have a fever.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2770,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Woke up with a pounding headache, body aches, and a dry cough that won't stop.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 1,
+        "latencyMs": 2853,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "I've been feeling exhausted for two weeks and have a constant low grade fever.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2272,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "My stomach hurts right around my belly button and I feel nauseous and dizzy.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2713,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "I keep sneezing, my nose is completely stuffed up, and my throat feels itchy.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 3044,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Feeling really weak, chilled to the bone, with a nasty wet cough raising phlegm.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2532,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Sudden onset of severe shivering, high temperature, and a general lack of physical energy.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2157,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Persistent mild diarrhea and abdominal cramps after eating out at a restaurant last night.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2527,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "My whole body feels heavy, muscles are sore, and I can't seem to stay warm.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.9,
+        "latencyMs": 2520,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Woke up dizzy with a runny nose and a raw throat that feels like sandpaper.",
+        "correct": true,
+        "predicted": "General Physician",
+        "confidence": 0.95,
+        "latencyMs": 2914,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "I have a deep chest cough that gets worse at night and general fatigue.",
+        "correct": false,
+        "predicted": "No AI service available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 445,
+        "error": "No AI service available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Losing weight without trying, constantly thirsty, and running to the bathroom all day long.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Severe pain in both my knees and elbows along with a mild, lingering fever.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 3,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "I feel lightheaded when I stand up quickly, accompanied by brief periods of nausea.",
+        "correct": false,
+        "predicted": "Gynaecologist",
+        "confidence": 0.92,
+        "latencyMs": 41,
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Swollen glands under my jaw, a stuffed up head, and general weakness all over.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "A nagging dry cough that started after a cold and just won't clear up.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "I have general weakness, pale skin, and get out of breath just walking short distances.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Sharp pain in my side when breathing, accompanied by a mild fever and chills.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Persistent dull headache everyday for a week with a slight stiffness in my neck.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Sudden onset of vomiting and stomach upset with a mild temperature increase this morning.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "General Physician"
+      },
+      {
+        "symptoms": "Crushing pressure in the center of my chest that makes it hard to breathe.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 4,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "My heart feels like it is skipping beats and racing while I am resting.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Sharp squeezing pain behind my breastbone that spreads up into my left jaw area.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "I get breathless after walking just a few steps and my ankles are very swollen.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Sudden tightness in my chest combined with cold sweats and dizziness while sitting down.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Fluttering sensation in my chest that makes me feel lightheaded and faint quite often.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "A heavy, suffocating feeling in my thorax whenever I try to do light exercise.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Woke up gasping for air in the middle of the night with chest discomfort.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Dull ache in my upper back and left shoulder paired with unexplained extreme fatigue.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "My pulse is beating incredibly fast for no reason and my chest feels constricted.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Constant thumping in my chest wall that leaves me feeling weak and short of breath.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Squeezing sensation under my ribs that shoots down my left arm when I stress.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Extreme dizziness paired with a strange, heavy pressure across my upper torso and neck.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "I can feel my heart pounding hard against my ribs even when I am calm.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Shortness of breath accompanied by a tight feeling in the middle of my upper body.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Unusual swelling in both legs alongside a heavy chest feeling when lying completely flat.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Sharp chest pains that get significantly worse when I try to take a deep breath.",
+        "correct": true,
+        "predicted": "Cardiologist",
+        "confidence": 0.92,
+        "latencyMs": 34,
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "A sudden wave of nausea, cold sweat, and standard ache across my left pectoral muscle.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Burning sensation in my center chest area that doesn't go away with antacids or water.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "Feeling faint with a strange, irregular thumping rhythm inside my chest cavity for hours.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 3,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Cardiologist"
+      },
+      {
+        "symptoms": "I have a red, itchy rash spreading across my forearms and it feels hot.",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 28,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "This mole on my shoulder has changed color and the edges look really jagged.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "My scalp is incredibly dry, flaky, and bleeds slightly when I scratch the patches.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 10,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Severe breakouts of painful, deep pimples all over my jawline that won't clear up.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "A silver, scaly patch of skin developed on my elbow and keeps getting thicker.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "My fingernails are crumbling, turning yellow, and separating from the skin underneath them.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Developed these strange, fluid filled blisters on my stomach that itch like crazy now.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Chronic redness on my cheeks and nose that gets worse with spicy food, stinging.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "A small bump on my nose keeps bleeding spontaneously and never fully heals over.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "My skin is peeling off in sheets on my palms and feels deeply cracked.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Huge patches of skin on my back have completely lost their pigment and turned white.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "I have an intense, burning hive outbreak across my chest after using a new lotion.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Rough, dark patches of velvety skin are forming around the folds of my neck.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 4,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "My hair is falling out in perfectly round, smooth bald spots on my head.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "An angry red welt appeared on my leg and it feels very warm to touch.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Extremely dry, itchy skin patches in the creases of my elbows that bleed when scratched.",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 39,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Painful bumps forming under my armpits that leak fluid and leave deep scars behind.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "I have a sudden rash on my face shaped like a butterfly across my nose.",
+        "correct": true,
+        "predicted": "Dermatologist",
+        "confidence": 0.92,
+        "latencyMs": 36,
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "A hard, painful nodule grew under the skin of my thigh and looks purple.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "Dry, scaling lips that are splitting at the corners and burning whenever I eat anything.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Dermatologist"
+      },
+      {
+        "symptoms": "It burns intensely every single time I try to pass urine, very uncomfortable.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 29,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "I've noticed a dull, heavy ache in my lower abdomen and left testicle recently.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 9,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "I suddenly can't empty my bladder completely, the stream is just a weak trickle.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 31,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Woke up with agonizing, sharp pain in my lower back shooting down to my groin.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "There is a noticeable pinkish tint to my urine today, feels like blood.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 26,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "I am having extreme difficulty starting to urinate even when my bladder feels completely full.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 27,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "I have to wake up five or six times every night just to pee.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Sudden loss of bladder control, leaking urine whenever I laugh, cough, or sneeze heavily.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 55,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "A firm, completely painless lump has appeared on my right testicle during a self-check.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Constant, deep ache in my pelvic floor region combined with painful ejaculation issues.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "My urine has a very cloudy appearance and smells incredibly foul and pungent.",
+        "correct": true,
+        "predicted": "Urologist",
+        "confidence": 0.92,
+        "latencyMs": 38,
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "I have a sudden, uncontrollable urge to urinate every twenty minutes throughout the day.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Sharp, cramping spasms in my flank area that make me feel nauseous and sweaty.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Persistent discomfort and pressure right above my pubic bone that won't go away.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Trouble maintaining an erection over the past few months along with reduced sex drive.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 8,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Burning at the tip of my penis accompanied by a strange clear discharge fluid.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 5,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "Severe swelling and redness all over my scrotum, making it painful to even walk.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 7,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      },
+      {
+        "symptoms": "A heavy pressure in my lower back paired with painful, frequent drops of urination.",
+        "correct": false,
+        "predicted": "AI service not available for specialization matching",
+        "confidence": 0,
+        "latencyMs": 6,
+        "error": "AI service not available for specialization matching",
+        "correctSpecialty": "Urologist"
+      }
+    ],
+    "report": {
+      "label": "Gemini",
+      "perClass": [
+        {
+          "class": "AI service not available for specialization matching",
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0,
+          "tp": 0,
+          "fp": 56,
+          "fn": 0
+        },
+        {
+          "class": "Cardiologist",
+          "precision": 0.75,
+          "recall": 0.13043478260869565,
+          "f1": 0.22222222222222218,
+          "support": 23,
+          "tp": 3,
+          "fp": 1,
+          "fn": 20
+        },
+        {
+          "class": "Dermatologist",
+          "precision": 1,
+          "recall": 0.32,
+          "f1": 0.48484848484848486,
+          "support": 25,
+          "tp": 8,
+          "fp": 0,
+          "fn": 17
+        },
+        {
+          "class": "General Physician",
+          "precision": 1,
+          "recall": 0.5555555555555556,
+          "f1": 0.7142857142857143,
+          "support": 27,
+          "tp": 15,
+          "fp": 0,
+          "fn": 12
+        },
+        {
+          "class": "Gynaecologist",
+          "precision": 0.75,
+          "recall": 1,
+          "f1": 0.8571428571428571,
+          "support": 3,
+          "tp": 3,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "class": "No AI service available for specialization matching",
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "support": 0,
+          "tp": 0,
+          "fp": 2,
+          "fn": 0
+        },
+        {
+          "class": "Ophthalmologist",
+          "precision": 0.75,
+          "recall": 1,
+          "f1": 0.8571428571428571,
+          "support": 3,
+          "tp": 3,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "class": "Urologist",
+          "precision": 1,
+          "recall": 0.45454545454545453,
+          "f1": 0.625,
+          "support": 22,
+          "tp": 10,
+          "fp": 0,
+          "fn": 12
+        }
+      ],
+      "macro": {
+        "precision": 0.65625,
+        "recall": 0.4325669740887132,
+        "f1": 0.47008026695526695
+      },
+      "weighted": {
+        "precision": 0.9296116504854369,
+        "recall": 0.4077669902912621,
+        "f1": 0.5379698510766472
+      },
+      "accuracy": 0.4077669902912621
+    }
+  },
+  "bart": null
+}

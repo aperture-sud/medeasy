@@ -82,7 +82,7 @@ function specsMatch(predicted, correct) {
     return pn === cn || pn.includes(cn) || cn.includes(pn);
 }
 
-async function classifyGemini(symptoms, knowledgeBaseString, availableSpecializations) {
+async function classifyGemini(symptoms, knowledgeBaseString, availableSpecializations, retries = 2) {
     const t0 = Date.now();
     try {
         const res = await post(`${SERVER_URL}/api/match-specialization`, {
@@ -98,6 +98,12 @@ async function classifyGemini(symptoms, knowledgeBaseString, availableSpecializa
             error: res.error,
         };
     } catch (e) {
+        const is429 = e.message && (e.message.includes('429') || e.message.toLowerCase().includes('quota') || e.message.toLowerCase().includes('rate limit'));
+        if (is429 && retries > 0) {
+            console.warn(`\n  ⏳ Rate limited, backing off 15s (${retries} retries left)...`);
+            await new Promise(r => setTimeout(r, 15000));
+            return classifyGemini(symptoms, knowledgeBaseString, availableSpecializations, retries - 1);
+        }
         return { predicted: 'error', confidence: 0, latencyMs: Date.now() - t0, error: e.message };
     }
 }
@@ -176,13 +182,13 @@ async function main() {
 
         if (RUN_GEMINI) {
             const r = await classifyGemini(tc.symptoms, knowledgeBaseString, availableSpecializations);
-            geminiResults.push({ ...tc, ...r, correct: specsMatch(r.predicted, tc.correct) });
-            // Small delay to avoid rate limiting
-            await new Promise(r => setTimeout(r, 500));
+            geminiResults.push({ ...tc, ...r, correctSpecialty: tc.correct, correct: specsMatch(r.predicted, tc.correct) });
+            // Delay to stay under free-tier RPM (Gemini free tier is typically 10-15 req/min)
+            await new Promise(r => setTimeout(r, 4500));
         }
         if (RUN_BART) {
             const r = await classifyBART(tc.symptoms, availableSpecializations);
-            bartResults.push({ ...tc, ...r, correct: specsMatch(r.predicted, tc.correct) });
+            bartResults.push({ ...tc, ...r, correctSpecialty: tc.correct, correct: specsMatch(r.predicted, tc.correct) });
         }
     }
     process.stdout.write('\r' + ' '.repeat(50) + '\r');
@@ -225,10 +231,9 @@ async function main() {
         console.log();
 
         // Per-specialty breakdown
-        const specs = [...new Set(results.map(r => r.correct_display || r.correct))];
         const bySpec = {};
         for (const r of results) {
-            const key = r.correct;
+            const key = r.correctSpecialty || r.correct_display || 'unknown';
             if (!bySpec[key]) bySpec[key] = { total: 0, ok: 0 };
             bySpec[key].total++;
             if (r.correct) bySpec[key].ok++;
@@ -278,8 +283,8 @@ function classificationReport(label, results) {
 
     const classes = new Set();
     for (const r of results) {
-        classes.add(norm(r.correct));
-        displayFor[norm(r.correct)] = r.correct;
+        classes.add(norm(r.correctSpecialty));
+        displayFor[norm(r.correctSpecialty)] = r.correctSpecialty;
         if (r.predicted && r.predicted !== 'error') {
             classes.add(norm(r.predicted));
             displayFor[norm(r.predicted)] = displayFor[norm(r.predicted)] || r.predicted;
@@ -290,7 +295,7 @@ function classificationReport(label, results) {
     for (const c of classes) stats[c] = { tp: 0, fp: 0, fn: 0, support: 0 };
 
     for (const r of results) {
-        const truth = norm(r.correct);
+        const truth = norm(r.correctSpecialty);
         const pred  = r.predicted && r.predicted !== 'error' ? norm(r.predicted) : null;
         stats[truth].support++;
 
@@ -298,7 +303,7 @@ function classificationReport(label, results) {
             stats[truth].fn++;
             continue;
         }
-        if (specsMatch(r.predicted, r.correct)) {
+        if (r.correct) {
             stats[truth].tp++;
         } else {
             stats[truth].fn++;

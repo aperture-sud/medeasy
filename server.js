@@ -466,9 +466,9 @@ async function initGemini() {
     }
     try {
         genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
         // Probe with a minimal request to confirm the key and quota are valid
-        await model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } });
+        await model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1, thinkingConfig: { thinkingBudget: 0 } } });
         console.log('✅ Gemini AI available — using Gemini as primary');
     } catch (error) {
         genAI = null;
@@ -667,9 +667,9 @@ app.post('/api/medical-chat', async (req, res) => {
         if (isGeminiAvailable()) {
             try {
                 const chatModel = genAI.getGenerativeModel({
-                    model: 'gemini-2.0-flash',
+                    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
                     systemInstruction: systemInstruction,
-                    generationConfig: { temperature: 0.7, maxOutputTokens: 300 }
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
                 });
 
                 const rawHistory = conversationHistory.slice(-10).map(msg => ({
@@ -729,7 +729,7 @@ Comma-separated symptom list:`;
         let list = '';
         if (isGeminiAvailable()) {
             try {
-                const m = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', generationConfig: { temperature: 0.1, maxOutputTokens: 80 } });
+                const m = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', generationConfig: { temperature: 0.1, maxOutputTokens: 200, thinkingConfig: { thinkingBudget: 0 } } });
                 const r = await m.generateContent(prompt);
                 list = r.response.text().trim();
             } catch (e) { if (e.message?.includes('429')) markGeminiQuotaExhausted(); }
@@ -776,8 +776,8 @@ app.post('/api/extract-patient-info', async (req, res) => {
         if (isGeminiAvailable()) {
             try {
                 const extractModel = genAI.getGenerativeModel({
-                    model: 'gemini-2.0-flash',
-                    generationConfig: { temperature: 0.1, maxOutputTokens: 300 }
+                    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                    generationConfig: { temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
                 });
                 const result = await extractModel.generateContent(fullExtractionPrompt);
                 text = result.response.text().trim();
@@ -936,8 +936,8 @@ Return ONLY the JSON array, no explanation, no markdown.`;
         if (isGeminiAvailable()) {
             try {
                 const m = genAI.getGenerativeModel({
-                    model: 'gemini-2.0-flash',
-                    generationConfig: { temperature: 0.2, maxOutputTokens: 400 }
+                    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 700, thinkingConfig: { thinkingBudget: 0 } }
                 });
                 const result = await m.generateContent(prompt);
                 text = result.response.text().trim();
@@ -1050,8 +1050,8 @@ Reason: [one sentence explaining the diagnosis based on the symptoms]`;
         if (isGeminiAvailable()) {
             try {
                 const diagModel = genAI.getGenerativeModel({
-                    model: 'gemini-2.0-flash',
-                    generationConfig: { temperature: 0.2, maxOutputTokens: 150 }
+                    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } }
                 });
                 const result = await diagModel.generateContent(prompt);
                 text = result.response.text().trim();
@@ -1112,8 +1112,8 @@ Rules:
     if (isGeminiAvailable()) {
         try {
             const m = genAI.getGenerativeModel({
-                model: 'gemini-2.0-flash',
-                generationConfig: { temperature: 0.2, maxOutputTokens: 300 }
+                model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                generationConfig: { temperature: 0.2, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
             });
             const result = await m.generateContent(prompt);
             text = result.response.text().trim();
@@ -1507,8 +1507,8 @@ Respond in JSON format:
         if (isGeminiAvailable()) {
             try {
                 const matchModel = genAI.getGenerativeModel({
-                    model: 'gemini-2.0-flash',
-                    generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+                    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                    generationConfig: { temperature: 0.1, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } }
                 });
                 const result = await matchModel.generateContent(specializationPrompt);
                 text = result.response.text().trim();
@@ -1533,6 +1533,7 @@ Respond in JSON format:
             if (jsonMatch) {
                 matchResult = JSON.parse(jsonMatch[0]);
             } else {
+                console.error('❌ Raw AI response that failed to parse:', text);
                 throw new Error('Invalid response format');
             }
         }
@@ -1975,7 +1976,7 @@ Classify urgency as exactly one word: routine, urgent, or emergency.
 Reply with only the single word.`;
             let answer = '';
             if (isGeminiAvailable()) {
-                const m = genAI.getGenerativeModel({ model: 'gemini-2.0-flash', generationConfig: { temperature: 0.0, maxOutputTokens: 10 } });
+                const m = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', generationConfig: { temperature: 0.0, maxOutputTokens: 50, thinkingConfig: { thinkingBudget: 0 } } });
                 const r = await m.generateContent(prompt);
                 answer = r.response.text().trim().toLowerCase();
             } else {
