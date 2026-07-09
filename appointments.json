@@ -1223,7 +1223,7 @@
     },
     "appointmentDate": "2026-07-09",
     "appointmentTime": "13:15",
-    "status": "pending",
+    "status": "cancelled",
     "urgency": "urgent",
     "emergencyFlag": false,
     "createdAt": "2026-07-09T07:21:27.096Z",
@@ -1239,6 +1239,186 @@
         "Stool analysis"
       ],
       "urgency": "routine"
-    }
+    },
+    "cancelledAt": "2026-07-09T07:27:35.330Z"
+  },
+  {
+    "id": "45ea76ef-9600-4c1f-af78-ee0b830b9b70",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "diwnjn",
+      "age": 19,
+      "gender": "Male",
+      "contact": "9999999990",
+      "issues": "Please provide the medical conversation for me to extract the patient's symptoms. 😊",
+      "diagnosis": "Under assessment",
+      "symptomsSummary": ""
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "13:45",
+    "status": "confirmed",
+    "urgency": "urgent",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T07:30:05.703Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Obtain detailed family history.",
+        "Assess for risk factors and lifestyle habits.",
+        "Consider referral to mental health specialist if relevant."
+      ],
+      "labTests": [
+        "Complete blood count",
+        "Electrolytes panel",
+        "Urinalysis",
+        "Liver function tests (LFTs)"
+      ],
+      "urgency": "routine"
+    },
+    "consultationStatus": "completed",
+    "consultationStartedAt": "2026-07-09T07:30:45.252Z",
+    "consultationEndedAt": "2026-07-09T07:30:47.117Z",
+    "consultationDurationMinutes": 0,
+    "updatedAt": "2026-07-09T07:36:34.295Z"
+  },
+  {
+    "id": "b4099ed9-00aa-49ce-81f0-24d77fa63c5d",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "diwnjn",
+      "age": 18,
+      "gender": "Male",
+      "contact": "9999999990",
+      "issues": "Please provide the medical conversation so I can extract the patient's symptoms. 😊",
+      "diagnosis": "Under assessment",
+      "symptomsSummary": ""
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "14:15",
+    "status": "confirmed",
+    "urgency": "urgent",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T07:33:19.497Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Assess for mental health concerns.",
+        "Encourage healthy lifestyle choices.",
+        "Monitor symptoms and adjust treatment as needed."
+      ],
+      "labTests": [
+        "CBC, CMP",
+        "Urinalysis",
+        "ECG"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-07-09T07:49:28.716Z"
+  },
+  {
+    "id": "5f43c1fc-222d-4156-85bd-7af7a262269e",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "diwnjn",
+      "age": 19,
+      "gender": "Female",
+      "contact": "9999999990",
+      "issues": "Please provide the medical conversation so I can extract the patient's symptoms. 😊",
+      "diagnosis": "Under assessment",
+      "symptomsSummary": ""
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "14:45",
+    "status": "confirmed",
+    "urgency": "routine",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T07:35:21.741Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Assess for mental health concerns.",
+        "Educate on healthy lifestyle choices.",
+        "Monitor vital signs regularly."
+      ],
+      "labTests": [
+        "Complete blood count",
+        "Electrolytes panel",
+        "Urinalysis"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-07-09T07:49:30.021Z"
+  },
+  {
+    "id": "9c0e93fb-3fea-46d5-8ae4-0a8aaf8694b2",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "diwnjn",
+      "age": 19,
+      "gender": "Female",
+      "contact": "9999999990",
+      "issues": "Please provide the medical conversation",
+      "diagnosis": "Under assessment",
+      "symptomsSummary": ""
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "13:30",
+    "status": "completed",
+    "urgency": "routine",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T07:49:13.568Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Comprehensive physical exam.",
+        "Lifestyle counseling."
+      ],
+      "labTests": [
+        "Complete blood count (CBC)",
+        "Thyroid panel",
+        "Urinalysis"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-07-09T07:49:37.114Z",
+    "consultationStatus": "completed",
+    "consultationStartedAt": "2026-07-09T07:59:02.199Z",
+    "consultationEndedAt": "2026-07-09T08:01:11.223Z",
+    "consultationDurationMinutes": 2.2
+  },
+  {
+    "id": "8f2050fc-8ebe-438c-8a40-271bb1a28a3d",
+    "doctorId": "GP001",
+    "doctorName": "Dr. Sarah Johnson",
+    "patient": {
+      "name": "diwnjn",
+      "age": 19,
+      "gender": "Male",
+      "contact": "9999999990",
+      "issues": "Please provide me with the medical conversation so I can extract the patient's symptoms",
+      "diagnosis": "Under assessment",
+      "symptomsSummary": ""
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "13:55",
+    "status": "confirmed",
+    "urgency": "routine",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T08:02:45.065Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Obtain detailed symptom history.",
+        "Consider physical examination for relevant findings.",
+        "Assess patient's risk factors and lifestyle."
+      ],
+      "labTests": [
+        "Complete blood count",
+        "Comprehensive metabolic panel",
+        "Urinalysis",
+        "Electrocardiogram (ECG)"
+      ],
+      "urgency": "routine"
+    },
+    "updatedAt": "2026-07-09T08:03:51.009Z"
   }
 ]

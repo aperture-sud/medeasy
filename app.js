@@ -1528,34 +1528,27 @@ class EnhancedAppointmentCreator {
         try {
             const data = this.llmInterface.patientData;
 
-            // Match specialty from the patient's full symptom summary before fetching doctors,
-            // so we only show relevant specialists (not ophthalmologists for GERD symptoms etc.)
-            let matchedSpec = '';
-            try {
-                const kbRes  = await fetch(`${window.location.origin}/api/knowledge-base`);
-                const kbData = await kbRes.json();
-                const matchRes = await fetch(`${window.location.origin}/api/match-specialization`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        patientIssues: data.symptomsSummary || data.symptoms || '',
-                        availableSpecializations: kbData.availableSpecializations || [],
-                        knowledgeBaseString: kbData.knowledgeBaseString || '',
-                        preferredTime: data.preferredTime || null
-                    })
-                });
-                const matchData = await matchRes.json();
-                matchedSpec = matchData.specialization || '';
-                console.log('🩺 Specialty matched for preferred doctor panel:', matchedSpec);
-            } catch (_) {}
-
+            // This is the "Know your doctor? Book directly" path — the patient
+            // either already named a preferred doctor or wants to browse the
+            // full list themselves. No AI specialty matching needed here;
+            // that's only useful for the symptom-driven flow (showDoctorSelection).
             const params = new URLSearchParams();
-            if (matchedSpec) params.set('specialization', matchedSpec);
             if (data.preferredTime) params.set('preferredTime', data.preferredTime);
 
             const docRes = await fetch(`${window.location.origin}/api/doctors/available?${params}`);
             const docData = await docRes.json();
-            const doctors = docData.doctors || [];
+            let doctors = docData.doctors || [];
+
+            // If the patient typed a preferred doctor name, sort them to the top
+            // (still show everyone else, in case of a typo or they change their mind).
+            if (data.preferredDoctor) {
+                const pref = data.preferredDoctor.toLowerCase();
+                doctors = [...doctors].sort((a, b) => {
+                    const aMatch = a.name.toLowerCase().includes(pref) ? 0 : 1;
+                    const bMatch = b.name.toLowerCase().includes(pref) ? 0 : 1;
+                    return aMatch - bMatch;
+                });
+            }
 
             document.getElementById('loadingPanel').style.display = 'none';
 
@@ -1664,35 +1657,13 @@ class EnhancedAppointmentCreator {
             if (data.preferredTime) subText += ` · Preferred: ${data.preferredTime}`;
             document.getElementById('doctorSelectionSub').textContent = subText;
 
-            // Render cards — top card is recommended (AI's first pick)
-            const grid = document.getElementById('doctorCards');
-            grid.innerHTML = doctors.map((doc, idx) => {
-                const stars = this._renderStars(doc.rating);
-                const slotText = doc.nextSlot
-                    ? `Next slot: ${doc.nextSlot.appointmentDate} at ${doc.nextSlot.appointmentTime}`
-                    : 'Availability to be confirmed';
-                const isRec = idx === 0;
-                return `<div class="doctor-card${isRec ? ' recommended' : ''}" onclick="window._selectDoctor(${idx})">
-                    <div class="doctor-card-left">
-                        <div class="doctor-avatar">👨‍⚕️</div>
-                        <div class="doctor-info">
-                            <div class="doctor-name">Dr. ${doc.name}</div>
-                            <div class="doctor-spec">${doc.specialization}</div>
-                            <div class="doctor-slot${doc.nextSlot ? '' : ' no-slot'}">${slotText}</div>
-                        </div>
-                    </div>
-                    <div class="doctor-card-right">
-                        <div class="star-rating">${stars}<span class="rating-num">${doc.rating.toFixed(1)}</span></div>
-                        ${isRec ? '<span class="rec-badge">Recommended</span>' : ''}
-                        <button class="select-btn">Select</button>
-                    </div>
-                </div>`;
-            }).join('');
+            // Store the specialty-matched list (used as the default view)
+            this._doctorList = doctors;
+            this._allDoctorsCache = null; // lazy-loaded full roster, fetched on demand
+
+            this._renderDoctorCards(doctors);
 
             document.getElementById('doctorSelectionPanel').style.display = 'block';
-
-            // Store doctors list so the click handler can access it
-            this._doctorList = doctors;
 
             // Global click handler
             window._selectDoctor = async (idx) => {
@@ -1701,6 +1672,44 @@ class EnhancedAppointmentCreator {
                 await this.showDoctorCalendar(chosen);
             };
 
+            // ── "Show all doctors" — fetch the full roster (no specialization filter) ──
+            const showAllBtn = document.getElementById('showAllDoctorsBtn');
+            if (showAllBtn) {
+                showAllBtn.onclick = async () => {
+                    if (!this._allDoctorsCache) {
+                        showAllBtn.textContent = 'Loading…';
+                        try {
+                            const allRes = await fetch(`${window.location.origin}/api/doctors/available`);
+                            const allData = await allRes.json();
+                            this._allDoctorsCache = allData.doctors || [];
+                        } catch (e) {
+                            showAllBtn.textContent = 'Show all doctors';
+                            return;
+                        }
+                    }
+                    this._doctorList = this._allDoctorsCache;
+                    document.getElementById('doctorSelectionSub').textContent = 'All available doctors';
+                    document.getElementById('doctorSearchInput').value = '';
+                    this._renderDoctorCards(this._doctorList);
+                    showAllBtn.textContent = 'Show all doctors';
+                };
+            }
+
+            // ── Search filter (matches name or specialization, client-side) ──
+            const searchInput = document.getElementById('doctorSearchInput');
+            if (searchInput) {
+                searchInput.oninput = () => {
+                    const q = searchInput.value.trim().toLowerCase();
+                    const source = this._allDoctorsCache || doctors;
+                    const filtered = !q ? source : source.filter(d =>
+                        (d.name || '').toLowerCase().includes(q) ||
+                        (d.specialization || '').toLowerCase().includes(q)
+                    );
+                    this._doctorList = filtered;
+                    this._renderDoctorCards(filtered, false);
+                };
+            }
+
         } catch (err) {
             console.error('❌ showDoctorSelection error:', err);
             document.getElementById('loadingPanel').style.display = 'none';
@@ -1708,6 +1717,39 @@ class EnhancedAppointmentCreator {
             this.addMessage('ai', '⚠️ Could not load doctors. Booking automatically...');
             await this.createAppointment();
         }
+    }
+
+    // Renders a list of doctor cards into #doctorCards. markFirstAsRecommended
+    // controls whether the first card gets the "Recommended" badge (only true
+    // for the initial specialty-matched view, not for search/show-all results).
+    _renderDoctorCards(doctors, markFirstAsRecommended = true) {
+        const grid = document.getElementById('doctorCards');
+        if (!doctors.length) {
+            grid.innerHTML = '<p style="color:#666;padding:1rem;">No doctors match that search.</p>';
+            return;
+        }
+        grid.innerHTML = doctors.map((doc, idx) => {
+            const stars = this._renderStars(doc.rating);
+            const slotText = doc.nextSlot
+                ? `Next slot: ${doc.nextSlot.appointmentDate} at ${doc.nextSlot.appointmentTime}`
+                : 'Availability to be confirmed';
+            const isRec = markFirstAsRecommended && idx === 0;
+            return `<div class="doctor-card${isRec ? ' recommended' : ''}" onclick="window._selectDoctor(${idx})">
+                <div class="doctor-card-left">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <div class="doctor-info">
+                        <div class="doctor-name">Dr. ${doc.name}</div>
+                        <div class="doctor-spec">${doc.specialization}</div>
+                        <div class="doctor-slot${doc.nextSlot ? '' : ' no-slot'}">${slotText}</div>
+                    </div>
+                </div>
+                <div class="doctor-card-right">
+                    <div class="star-rating">${stars}<span class="rating-num">${doc.rating.toFixed(1)}</span></div>
+                    ${isRec ? '<span class="rec-badge">Recommended</span>' : ''}
+                    <button class="select-btn">Select</button>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     _renderStars(rating) {

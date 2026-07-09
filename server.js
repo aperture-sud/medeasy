@@ -1360,7 +1360,12 @@ app.post('/api/match-specialization', async (req, res) => {
         const { patientIssues, availableSpecializations, knowledgeBaseString, preferredTime } = req.body;
 
         // ── Keyword fast-path (deterministic, runs before any LLM) ──────────────
-        const keywordSpec = keywordMatchSpecialty(patientIssues, availableSpecializations);
+        // Set DISABLE_KEYWORD_MATCH=true in .env to force every request through
+        // the LLM/BART pipeline (useful when running evaluate.js so you're
+        // actually measuring the model, not the keyword shortcut).
+        const keywordSpec = process.env.DISABLE_KEYWORD_MATCH === 'true'
+            ? null
+            : keywordMatchSpecialty(patientIssues, availableSpecializations);
         if (keywordSpec) {
             console.log('⚡ Keyword specialty match:', keywordSpec);
             // Still need a doctor + slot — find the best rated in this specialty
@@ -1369,7 +1374,7 @@ app.post('/api/match-specialization', async (req, res) => {
             const specDocs = doctors.filter(d => (d.specialization || '').toLowerCase().includes(keywordSpec.toLowerCase()));
             specDocs.sort((a, b) => (b.rating || 0) - (a.rating || 0));
             const best = specDocs[0];
-            let slot = best ? await computeNextAvailableSlot(best, appts, 15, preferredTime || null) : null;
+            let slot = best ? await computeNextAvailableSlot(best, appts, null, preferredTime || null) : null;
             return res.json({
                 specialization: keywordSpec,
                 doctorName: best ? (best.name || best.doctorName) : null,
@@ -1403,7 +1408,7 @@ app.post('/api/match-specialization', async (req, res) => {
                 });
                 let slot = null;
                 if (matched) {
-                    slot = await computeNextAvailableSlot(matched, appts, 15, preferredTime || null);
+                    slot = await computeNextAvailableSlot(matched, appts, null, preferredTime || null);
                 }
                 return res.json({
                     specialization: bartResult.specialization,
@@ -1991,12 +1996,29 @@ Reply with only the single word.`;
 // urgency: 'routine' | 'urgent' | 'emergency'
 // - urgent    → only search within 24h window (expands to 48h if nothing found)
 // - emergency → ignore preferredTime, use higher MAX_ITERS, set isEmergency flag
-async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 15, preferredTime = null, urgency = 'routine') {
+async function computeNextAvailableSlot(doctor, appointments, durationMinutes = null, preferredTime = null, urgency = 'routine') {
+  const doctorDisplayName = doctor.name || doctor.doctorName || doctor['Doctor Name'] || '';
+
+  // Slot length priority: explicit caller override > doctor's manually-set
+  // slotDuration in availability settings > doctor's real average consultation
+  // time (rounded to a sane 5-min increment) > 15-min fallback for new doctors
+  // with no consultation history yet.
+  let autoDuration = null;
+  if (durationMinutes === null) {
+    try {
+      const avg = await computeAvgConsultationMinutes(doctorDisplayName);
+      if (avg && avg.averageMinutes) {
+        autoDuration = Math.max(10, Math.min(60, Math.round(avg.averageMinutes / 5) * 5));
+      }
+    } catch (_) {}
+  }
+  durationMinutes = durationMinutes ?? autoDuration ?? 15;
+
   // Prefer saved availability.json over Excel string
   try {
     const allAvail = await readAvailability();
     const { listDoctors: _ld } = require('./doctorAuth');
-    const authDoc = _ld().find(d => d.name.toLowerCase() === (doctor.name || doctor.doctorName || doctor['Doctor Name'] || '').toLowerCase());
+    const authDoc = _ld().find(d => d.name.toLowerCase() === doctorDisplayName.toLowerCase());
     if (authDoc && allAvail[authDoc.id]) {
       const saved = allAvail[authDoc.id];
       // Build an availability string compatible with parseAvailability e.g. "Monday to Friday 09:00 to 17:00"
@@ -2005,6 +2027,7 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
       if (sortedDays.length > 0) {
         const dayStr = `${dayNames[sortedDays[0]]} to ${dayNames[sortedDays[sortedDays.length-1]]}`;
         doctor = { ...doctor, availability: `${dayStr} ${saved.startTime} to ${saved.endTime}` };
+        // A doctor-set slotDuration is an explicit manual override — takes priority over the auto-computed average.
         durationMinutes = saved.slotDuration || durationMinutes;
       }
     }
@@ -2026,13 +2049,14 @@ async function computeNextAvailableSlot(doctor, appointments, durationMinutes = 
   }
 
   const now = new Date();
-  let candidate;
-  if (latest && latest instanceof Date && !isNaN(latest)) {
-    candidate = addMinutes(latest, durationMinutes);
-    if (candidate < now) candidate = roundUpToNextQuarter(now);
-  } else {
-    candidate = roundUpToNextQuarter(now);
-  }
+  // NOTE: We intentionally do NOT seed the search candidate from `latest`
+  // (doctor.latestBookedSlot). Doing so used to skip genuinely free earlier
+  // slots whenever that xlsx marker drifted ahead of reality (e.g. two
+  // bookings close together) — the search would jump straight past open
+  // slots instead of finding them. Always scan forward from "now"; the
+  // conflicts() check below against appointments.json is the real source
+  // of truth for what's actually booked.
+  let candidate = roundUpToNextQuarter(now);
 
   // Load saved availability (including dateOverrides) for this doctor
   let savedAvail = null;
@@ -2164,7 +2188,7 @@ app.get('/api/doctors/slots', async (req, res) => {
     const limit = Math.min(parseInt(count) || 15, 50);
 
     for (let i = 0; i < limit; i++) {
-      const slot = await computeNextAvailableSlot(doctor, fakeAppts, 15, null);
+      const slot = await computeNextAvailableSlot(doctor, fakeAppts, null, null);
       if (!slot) break;
       slots.push(slot);
       fakeAppts.push({
@@ -2192,7 +2216,7 @@ app.get('/api/doctors/available', async (req, res) => {
       : doctors;
 
     const results = await Promise.all(matched.map(async d => {
-      const slot = await computeNextAvailableSlot(d, appts, 15, preferredTime || null);
+      const slot = await computeNextAvailableSlot(d, appts, null, preferredTime || null);
       return {
         name:           d.name,
         specialization: d.specialization,
@@ -2240,7 +2264,7 @@ app.post('/api/book-appointment', async (req, res) => {
 
       const slot = (requestedDate && requestedTime)
         ? { appointmentDate: requestedDate, appointmentTime: requestedTime }
-        : await computeNextAvailableSlot(doctor, currentAppts, 15, preferredTime || null, urgencyLevel);
+        : await computeNextAvailableSlot(doctor, currentAppts, null, preferredTime || null, urgencyLevel);
       if (!slot) throw new Error('No available slot found in the next few days/hours');
 
       // Resolve doctorId from auth DB so doctor portal can filter appointments
@@ -2355,11 +2379,124 @@ app.post('/api/book-appointment', async (req, res) => {
 // endpoint to list appointments (optionally filter by doctor or urgency)
 app.get('/api/appointments', async (req, res) => {
   try {
-    const { doctor: doctorName, urgency: urgencyFilter } = req.query;
+    const { doctor: doctorName, urgency: urgencyFilter, contact } = req.query;
     const appts = await readAppointments();
     let out = doctorName ? appts.filter(a => a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase())) : appts;
     if (urgencyFilter) out = out.filter(a => a.urgency === urgencyFilter);
+    if (contact) {
+      // Patient self-lookup: match on last 4+ digits of stored contact number.
+      const digits = String(contact).replace(/\D/g, '');
+      out = out.filter(a => {
+        const stored = (a.patient && a.patient.contact ? String(a.patient.contact) : '').replace(/\D/g, '');
+        return stored && digits && stored.endsWith(digits.slice(-10));
+      });
+      // Strip other patients' details when doing a self-lookup response
+      out = out.map(a => ({
+        id: a.id, doctorName: a.doctorName, appointmentDate: a.appointmentDate,
+        appointmentTime: a.appointmentTime, status: a.status,
+        patient: { name: a.patient?.name, issues: a.patient?.issues },
+        cancelledAt: a.cancelledAt, rescheduledAt: a.rescheduledAt,
+      }));
+    }
     res.json({ success: true, total: out.length, appointments: out });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── Average consultation time (computed on the fly from completed consultations) ──
+// A consultation is "completed" once it has both consultationStartedAt and
+// consultationEndedAt. We average durationMinutes across a doctor's last N
+// completed consultations to avoid one outlier skewing slot planning forever.
+async function computeAvgConsultationMinutes(doctorName, maxSamples = 20) {
+  const appts = await readAppointments();
+  const completed = appts
+    .filter(a =>
+      a.doctorName && a.doctorName.toLowerCase() === doctorName.toLowerCase() &&
+      typeof a.consultationDurationMinutes === 'number'
+    )
+    .sort((a, b) => new Date(b.consultationEndedAt) - new Date(a.consultationEndedAt))
+    .slice(0, maxSamples);
+  if (completed.length === 0) return null;
+  const avg = completed.reduce((sum, a) => sum + a.consultationDurationMinutes, 0) / completed.length;
+  return { averageMinutes: Math.round(avg * 10) / 10, sampleSize: completed.length };
+}
+
+// PUT /api/doctor/appointments/:id/start-consultation — doctor starts seeing a patient
+app.put('/api/doctor/appointments/:id/start-consultation', doctorAuthMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appts = await readAppointments();
+    const idx = appts.findIndex(a => a.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Appointment not found.' });
+
+    const appt = appts[idx];
+    if (appt.doctorId !== req.doctor.id && appt.doctorName.toLowerCase() !== req.doctor.name.toLowerCase()) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+    if (appt.status === 'cancelled') {
+      return res.status(409).json({ success: false, error: 'Cannot start a cancelled appointment.' });
+    }
+    // Guard: don't allow starting a second consultation while one is already live for this doctor
+    const alreadyLive = appts.find(a =>
+      a.doctorName && a.doctorName.toLowerCase() === req.doctor.name.toLowerCase() &&
+      a.consultationStatus === 'in-progress'
+    );
+    if (alreadyLive && alreadyLive.id !== id) {
+      return res.status(409).json({ success: false, error: `Consultation already in progress for appointment ${alreadyLive.id}. Stop it first.` });
+    }
+
+    appt.consultationStatus = 'in-progress';
+    appt.consultationStartedAt = new Date().toISOString();
+    delete appt.consultationEndedAt;
+    delete appt.consultationDurationMinutes;
+    appts[idx] = appt;
+    await writeAppointments(appts);
+    res.json({ success: true, appointment: appt });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// PUT /api/doctor/appointments/:id/stop-consultation — doctor ends a consultation
+app.put('/api/doctor/appointments/:id/stop-consultation', doctorAuthMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appts = await readAppointments();
+    const idx = appts.findIndex(a => a.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Appointment not found.' });
+
+    const appt = appts[idx];
+    if (appt.doctorId !== req.doctor.id && appt.doctorName.toLowerCase() !== req.doctor.name.toLowerCase()) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+    if (appt.consultationStatus !== 'in-progress' || !appt.consultationStartedAt) {
+      return res.status(409).json({ success: false, error: 'This consultation was never started.' });
+    }
+
+    const startedAt = new Date(appt.consultationStartedAt);
+    const endedAt = new Date();
+    const durationMinutes = Math.max(0, Math.round(((endedAt - startedAt) / 60000) * 10) / 10);
+
+    appt.consultationStatus = 'completed';
+    appt.consultationEndedAt = endedAt.toISOString();
+    appt.consultationDurationMinutes = durationMinutes;
+    appt.status = 'completed';
+    appts[idx] = appt;
+    await writeAppointments(appts);
+
+    const avg = await computeAvgConsultationMinutes(req.doctor.name);
+    res.json({ success: true, appointment: appt, doctorAverageConsultationMinutes: avg });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// GET /api/doctor/consultation-stats — average consultation time for a doctor
+app.get('/api/doctor/consultation-stats', doctorAuthMiddleware, async (req, res) => {
+  try {
+    const avg = await computeAvgConsultationMinutes(req.doctor.name);
+    res.json({ success: true, doctorName: req.doctor.name, average: avg });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -2367,14 +2504,19 @@ app.get('/api/appointments', async (req, res) => {
 
 // ── Live Queue Tracking ────────────────────────────────────────────────────────
 // GET /api/queue/:doctorName/:date
-// Returns the ordered queue for a doctor on a given date (confirmed + pending only).
+// Returns the ordered queue for a doctor on a given date (confirmed + pending only),
+// plus which appointment (if any) is currently in an active consultation, and a
+// wait-time estimate based on the doctor's real average consultation time.
 app.get('/api/queue/:doctorName/:date', async (req, res) => {
   try {
     const { doctorName, date } = req.params;
     const appts = await readAppointments();
-    const queue = appts
+    const dayAppts = appts.filter(a => a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase()));
+
+    const inConsultation = dayAppts.find(a => a.consultationStatus === 'in-progress');
+
+    const queue = dayAppts
       .filter(a =>
-        a.doctorName && a.doctorName.toLowerCase().includes(doctorName.toLowerCase()) &&
         a.appointmentDate === date &&
         ['confirmed', 'pending'].includes(a.status)
       )
@@ -2389,19 +2531,32 @@ app.get('/api/queue/:doctorName/:date', async (req, res) => {
         urgency: a.urgency || 'routine',
         status: a.status,
       }));
-    const slotMinutes = 15;
+
+    const avg = await computeAvgConsultationMinutes(doctorName);
+    const slotMinutes = avg ? avg.averageMinutes : 15; // fall back to 15 min until enough real data exists
+
     res.json({
       success: true,
       doctorName,
       date,
       queue,
       totalConfirmed: queue.filter(q => q.status === 'confirmed').length,
-      estimatedWaitMinutes: queue.length * slotMinutes,
+      estimatedWaitMinutes: Math.round(queue.length * slotMinutes),
+      minutesPerSlot: slotMinutes,
+      minutesPerSlotSource: avg ? `avg of last ${avg.sampleSize} consultations` : 'default (no consultation history yet)',
+      inConsultation: inConsultation ? {
+        appointmentId: inConsultation.id,
+        patientInitials: (inConsultation.patient && inConsultation.patient.name)
+          ? inConsultation.patient.name.split(' ').map(w => w[0].toUpperCase() + '.').join(' ')
+          : 'Unknown',
+        startedAt: inConsultation.consultationStartedAt,
+      } : null,
     });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
 });
+
 
 // ── Patient Ratings ───────────────────────────────────────────────────────────
 // Recalculate a doctor's average rating from all rated appointments and persist to xlsx.

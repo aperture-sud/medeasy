@@ -21,6 +21,7 @@
 
             <button class="start-btn" id="startBtn">Start Appointment Booking</button>
             <button class="direct-book-btn" id="directBookBtn">Know your doctor?<br>Book directly</button>
+            <button class="direct-book-btn" id="myAppointmentsBtn" onclick="openMyAppointments()" style="margin-top:8px;">📋 My Appointments<br><span style="font-weight:400;font-size:0.78rem;">View / Cancel</span></button>
         </div>
 
         <!-- Chat Container -->
@@ -108,6 +109,10 @@
                 <h3>👨‍⚕️ Recommended Doctors</h3>
                 <p id="doctorSelectionSub">Based on your symptoms, here are the best matches</p>
             </div>
+            <div style="display:flex; gap:8px; margin:10px 0; align-items:center;">
+                <input type="text" id="doctorSearchInput" placeholder="🔍 Search doctor by name or specialty…" style="flex:1; padding:0.55rem 0.8rem; border:1px solid #ccc; border-radius:8px; font-size:0.9rem;">
+                <button id="showAllDoctorsBtn" style="white-space:nowrap; padding:0.55rem 0.9rem; background:#f1f3f4; border:none; border-radius:8px; font-size:0.85rem; cursor:pointer;">Show all doctors</button>
+            </div>
             <div id="doctorCards" class="doctor-cards-grid"></div>
         </div>
 
@@ -116,7 +121,105 @@
             <h3>✅ Appointment Created Successfully!</h3>
             <div class="appointment-details" id="appointmentDetails"></div>
         </div>
+
+        <!-- My Appointments Modal -->
+        <div id="myAppointmentsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:#fff; border-radius:12px; padding:1.5rem; width:92%; max-width:480px; max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h3 style="margin:0;">📋 My Appointments</h3>
+                    <button onclick="closeMyAppointments()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;line-height:1;">✕</button>
+                </div>
+                <div id="myApptLookupStep">
+                    <p style="font-size:0.85rem;color:#555;margin-bottom:0.5rem;">Enter the phone number you used when booking:</p>
+                    <input type="tel" id="myApptPhoneInput" placeholder="e.g. 9876543210" style="width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:8px; font-size:0.95rem; box-sizing:border-box;">
+                    <button onclick="fetchMyAppointments()" style="margin-top:0.6rem; width:100%; padding:0.6rem; background:#1a73e8; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Find My Appointments</button>
+                    <div id="myApptLookupError" style="color:#dc2626; font-size:0.82rem; margin-top:0.4rem;"></div>
+                </div>
+                <div id="myApptListStep" style="display:none;">
+                    <div id="myApptList"></div>
+                    <button onclick="showMyApptLookupStep()" style="margin-top:0.6rem; width:100%; padding:0.5rem; background:#f1f3f4; color:#333; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem;">← Search a different number</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        let _myApptPhone = '';
+
+        function openMyAppointments() {
+            document.getElementById('myAppointmentsModal').style.display = 'flex';
+            showMyApptLookupStep();
+        }
+        function closeMyAppointments() {
+            document.getElementById('myAppointmentsModal').style.display = 'none';
+        }
+        function showMyApptLookupStep() {
+            document.getElementById('myApptLookupStep').style.display = 'block';
+            document.getElementById('myApptListStep').style.display = 'none';
+            document.getElementById('myApptLookupError').textContent = '';
+        }
+
+        async function fetchMyAppointments() {
+            const phone = document.getElementById('myApptPhoneInput').value.trim();
+            const errEl = document.getElementById('myApptLookupError');
+            errEl.textContent = '';
+            if (!phone || phone.replace(/\D/g, '').length < 4) {
+                errEl.textContent = 'Please enter a valid phone number.';
+                return;
+            }
+            _myApptPhone = phone;
+            try {
+                const res = await fetch(`/api/appointments?contact=${encodeURIComponent(phone)}`);
+                const data = await res.json();
+                if (!data.success) { errEl.textContent = 'Something went wrong. Try again.'; return; }
+                renderMyAppointments(data.appointments || []);
+            } catch (e) {
+                errEl.textContent = 'Network error — please try again.';
+            }
+        }
+
+        function renderMyAppointments(appts) {
+            document.getElementById('myApptLookupStep').style.display = 'none';
+            document.getElementById('myApptListStep').style.display = 'block';
+            const listEl = document.getElementById('myApptList');
+            if (!appts.length) {
+                listEl.innerHTML = '<p style="color:#666;font-size:0.88rem;">No appointments found for that number.</p>';
+                return;
+            }
+            listEl.innerHTML = appts.map(a => {
+                const cancellable = a.status !== 'cancelled' && a.status !== 'completed';
+                const statusColor = a.status === 'cancelled' ? '#dc2626' : a.status === 'confirmed' ? '#16a34a' : '#555';
+                return `<div style="border:1px solid #eee; border-radius:10px; padding:0.75rem; margin-bottom:0.6rem;">
+                    <div style="font-weight:600;">${a.doctorName || 'Doctor'}</div>
+                    <div style="font-size:0.85rem; color:#555;">🗓 ${a.appointmentDate} · 🕐 ${a.appointmentTime}</div>
+                    <div style="font-size:0.82rem; color:${statusColor}; font-weight:600; margin-top:2px;">${(a.status || '').toUpperCase()}</div>
+                    ${cancellable ? `<button onclick="cancelMyAppointment('${a.id}')" style="margin-top:0.5rem; padding:0.4rem 0.9rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; font-size:0.82rem; cursor:pointer;">Cancel Appointment</button>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        async function cancelMyAppointment(id) {
+            if (!confirm('Cancel this appointment? This cannot be undone.')) return;
+            const digits = _myApptPhone.replace(/\D/g, '');
+            const last4 = digits.slice(-4);
+            try {
+                const res = await fetch(`/api/appointments/${id}/cancel`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ last4 }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'Could not cancel appointment.');
+                    return;
+                }
+                alert('Appointment cancelled.');
+                fetchMyAppointments();
+            } catch (e) {
+                alert('Network error — please try again.');
+            }
+        }
+    </script>
 
     <script src="app.js"></script>
 </body>

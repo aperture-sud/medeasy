@@ -490,8 +490,10 @@
         <h2>📅 Reschedule Appointment</h2>
         <div class="modal-sub" id="reschedulePatientName"></div>
         <div class="form-grid" style="margin-bottom:1rem">
-            <div class="form-group"><label for="newDate">New Date</label><input type="date" id="newDate" /></div>
-            <div class="form-group"><label for="newTime">New Time</label><input type="time" id="newTime" /></div>
+            <div class="form-group" style="grid-column:1/-1;">
+                <label for="rescheduleSlotSelect">Available Slot</label>
+                <select id="rescheduleSlotSelect"><option value="">Loading available slots…</option></select>
+            </div>
         </div>
         <div id="rescheduleAlert" class="alert"></div>
         <div class="btn-row" style="margin-top:0">
@@ -768,25 +770,62 @@ async function loadQueue() {
             if (subtitle) subtitle.textContent = 'No appointments today';
             return;
         }
-        if (subtitle) subtitle.textContent = `${data.totalConfirmed} confirmed · Est. wait: ${data.estimatedWaitMinutes} min`;
+        if (subtitle) subtitle.textContent = `${data.totalConfirmed} confirmed · Est. wait: ${data.estimatedWaitMinutes} min · ~${data.minutesPerSlot} min/patient (${data.minutesPerSlotSource})`;
+
+        const liveId = data.inConsultation ? data.inConsultation.appointmentId : null;
+
         el.innerHTML = data.queue.map(q => {
             const urgBadge = q.urgency === 'emergency'
                 ? `<span class="urgency-badge urgency-emergency">🚨 Emergency</span>`
                 : q.urgency === 'urgent'
                 ? `<span class="urgency-badge urgency-urgent">⚡ Urgent</span>`
                 : '';
-            return `<div class="queue-card">
+            const isLive = q.appointmentId === liveId;
+            const consultBtn = isLive
+                ? `<button class="btn-secondary" style="background:#dc2626;color:#fff;font-size:0.78rem;padding:0.35rem 0.8rem" onclick="stopConsultation('${q.appointmentId}')">⏹ Stop Consultation</button>`
+                : liveId
+                ? `<button class="btn-secondary" style="font-size:0.78rem;padding:0.35rem 0.8rem" disabled title="Finish the current consultation first">▶ Start</button>`
+                : `<button class="btn-primary" style="font-size:0.78rem;padding:0.35rem 0.8rem" onclick="startConsultation('${q.appointmentId}')">▶ Start Consultation</button>`;
+            return `<div class="queue-card" style="${isLive ? 'border-left-color:#dc2626;background:#fef2f2' : ''}">
                 <div class="queue-position">#${q.position}</div>
                 <div class="queue-info">
-                    <div class="queue-name">${q.patientInitials} ${urgBadge}</div>
+                    <div class="queue-name">${q.patientInitials} ${urgBadge} ${isLive ? '<span style="color:#dc2626;font-weight:700;">🔴 In consultation</span>' : ''}</div>
                     <div class="queue-time">🕐 ${q.time} · ${q.status}</div>
                 </div>
+                ${consultBtn}
             </div>`;
         }).join('');
     } catch (e) {
         el.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load queue: ${e.message}</p></div>`;
     }
 }
+
+async function startConsultation(id) {
+    try {
+        const res = await fetch(`/api/doctor/appointments/${id}/start-consultation`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Failed to start consultation.'); return; }
+        loadQueue();
+    } catch { alert('Network error.'); }
+}
+
+async function stopConsultation(id) {
+    try {
+        const res = await fetch(`/api/doctor/appointments/${id}/stop-consultation`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Failed to stop consultation.'); return; }
+        const mins = data.appointment.consultationDurationMinutes;
+        alert(`Consultation ended — ${mins} min.`);
+        loadQueue();
+        loadAppointments();
+    } catch { alert('Network error.'); }
+}
+
+// Live tracking: refresh the queue automatically every 20s while the tab is open
+setInterval(() => {
+    const queueTab = document.getElementById('tab-queue');
+    if (queueTab && queueTab.classList.contains('active')) loadQueue();
+}, 20000);
 
 async function updateStatus(id, status) {
     try {
@@ -800,20 +839,37 @@ async function updateStatus(id, status) {
 }
 
 // ── Reschedule ──
-function openReschedule(id, patientName) {
+async function openReschedule(id, patientName) {
     _rescheduleId = id;
     document.getElementById('reschedulePatientName').textContent = `Rescheduling for ${patientName}`;
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-    document.getElementById('newDate').value = tomorrow.toISOString().split('T')[0];
-    document.getElementById('newTime').value = '09:00';
     hideAlert('rescheduleAlert');
     document.getElementById('rescheduleModal').classList.add('show');
+
+    const select = document.getElementById('rescheduleSlotSelect');
+    select.innerHTML = '<option value="">Loading available slots…</option>';
+    try {
+        const doctorName = localStorage.getItem('doctorName') || '';
+        const res = await fetch(`/api/doctors/slots?doctorName=${encodeURIComponent(doctorName)}&count=30`);
+        const data = await res.json();
+        if (!data.success || !data.slots || !data.slots.length) {
+            select.innerHTML = '<option value="">No open slots found</option>';
+            return;
+        }
+        select.innerHTML = data.slots.map(s => {
+            const label = new Date(`${s.appointmentDate}T${s.appointmentTime}`).toLocaleString(undefined, {
+                weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            return `<option value="${s.appointmentDate}|${s.appointmentTime}">${label}</option>`;
+        }).join('');
+    } catch (e) {
+        select.innerHTML = '<option value="">Failed to load slots</option>';
+    }
 }
 
 async function confirmReschedule() {
-    const rescheduleDate = document.getElementById('newDate').value;
-    const rescheduleTime = document.getElementById('newTime').value;
-    if (!rescheduleDate || !rescheduleTime) { showAlert('rescheduleAlert','Please select date and time.','error'); return; }
+    const selected = document.getElementById('rescheduleSlotSelect').value;
+    if (!selected) { showAlert('rescheduleAlert','Please select an available slot.','error'); return; }
+    const [rescheduleDate, rescheduleTime] = selected.split('|');
     const btn = document.getElementById('confirmRescheduleBtn');
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
     try {
