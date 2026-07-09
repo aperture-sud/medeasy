@@ -84,22 +84,5 @@
   { "symptoms": "I have a sudden rash on my face shaped like a butterfly across my nose.", "correct": "Dermatologist" },
   { "symptoms": "A hard, painful nodule grew under the skin of my thigh and looks purple.", "correct": "Dermatologist" },
   { "symptoms": "Dry, scaling lips that are splitting at the corners and burning whenever I eat anything.", "correct": "Dermatologist" },
-  { "symptoms": "It burns intensely every single time I try to pass urine, very uncomfortable.", "correct": "Urologist" },
-  { "symptoms": "I've noticed a dull, heavy ache in my lower abdomen and left testicle recently.", "correct": "Urologist" },
-  { "symptoms": "I suddenly can't empty my bladder completely, the stream is just a weak trickle.", "correct": "Urologist" },
-  { "symptoms": "Woke up with agonizing, sharp pain in my lower back shooting down to my groin.", "correct": "Urologist" },
-  { "symptoms": "There is a noticeable pinkish tint to my urine today, feels like blood.", "correct": "Urologist" },
-  { "symptoms": "I am having extreme difficulty starting to urinate even when my bladder feels completely full.", "correct": "Urologist" },
-  { "symptoms": "I have to wake up five or six times every night just to pee.", "correct": "Urologist" },
-  { "symptoms": "Sudden loss of bladder control, leaking urine whenever I laugh, cough, or sneeze heavily.", "correct": "Urologist" },
-  { "symptoms": "A firm, completely painless lump has appeared on my right testicle during a self-check.", "correct": "Urologist" },
-  { "symptoms": "Constant, deep ache in my pelvic floor region combined with painful ejaculation issues.", "correct": "Urologist" },
-  { "symptoms": "My urine has a very cloudy appearance and smells incredibly foul and pungent.", "correct": "Urologist" },
-  { "symptoms": "I have a sudden, uncontrollable urge to urinate every twenty minutes throughout the day.", "correct": "Urologist" },
-  { "symptoms": "Sharp, cramping spasms in my flank area that make me feel nauseous and sweaty.", "correct": "Urologist" },
-  { "symptoms": "Persistent discomfort and pressure right above my pubic bone that won't go away.", "correct": "Urologist" },
-  { "symptoms": "Trouble maintaining an erection over the past few months along with reduced sex drive.", "correct": "Urologist" },
-  { "symptoms": "Burning at the tip of my penis accompanied by a strange clear discharge fluid.", "correct": "Urologist" },
-  { "symptoms": "Severe swelling and redness all over my scrotum, making it painful to even walk.", "correct": "Urologist" },
-  { "symptoms": "A heavy pressure in my lower back paired with painful, frequent drops of urination.", "correct": "Urologist" }
+  { "symptoms": "It burns intensely every single time I try to pass urine, very uncomfortable.", "correct": "Urologist" }
 ]

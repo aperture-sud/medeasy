@@ -1207,5 +1207,38 @@
       ],
       "urgency": "routine"
     }
+  },
+  {
+    "id": "87e6c93a-34a3-4725-b96d-cec226857d46",
+    "doctorId": "CD001",
+    "doctorName": "Dr. Robert Martinez",
+    "patient": {
+      "name": "Asdjwdb",
+      "age": 18,
+      "gender": "Male",
+      "contact": "9999999999",
+      "issues": "chest pain, vomiting",
+      "diagnosis": "Acute Gastroenteritis",
+      "symptomsSummary": "chest pain\nDo you have any other symptoms besides chest pain such as nausea, vomiting, diarrhoea or abdominal distension? → vomitting\nCould you tell me a little bit about the duration of your chest pain? → form last 5 days\nCould you please tell me about the onset of your chest pain, when did it start? → i told you already before 5 days\nCould you please tell me a little bit about the duration of your chest pain? → i had this before 5 days when i also had some stomach ache and then i had vomiiting toaday"
+    },
+    "appointmentDate": "2026-07-09",
+    "appointmentTime": "13:15",
+    "status": "pending",
+    "urgency": "urgent",
+    "emergencyFlag": false,
+    "createdAt": "2026-07-09T07:21:27.096Z",
+    "aiSuggestions": {
+      "treatment": [
+        "Rehydrate with oral rehydration solution.",
+        "Monitor for worsening symptoms.",
+        "Follow up in 24 hours"
+      ],
+      "labTests": [
+        "Complete blood count (CBC)",
+        "Electrolyte panel",
+        "Stool analysis"
+      ],
+      "urgency": "routine"
+    }
   }
 ]
